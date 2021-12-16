@@ -25,6 +25,7 @@ let n_door_contact = Cfg.get('garage.north_door_contact');
 let s_door_contact = Cfg.get('garage.south_door_contact');
 let s_door_activate = Cfg.get('garage.south_door_activation_pin');
 
+//let time_now_fmt = ffi('char* time_now_fmt(void)');
 /**
  * Implementation of how to trigger the door opener relay
  */
@@ -91,6 +92,20 @@ let homie_setup_msgs = [
   {t: tr + '$state',  m:'ready', qos: 1, retain: true}
 ];
 
+// subscribe to homie set commands
+MQTT.sub(tr + '+/+/set', function(conn, topic, msg) {
+  print('Topic:', topic, 'message:', msg);
+  if (msg === '1' || msg === 'true') {
+    if (topic.indexOf('south-door/activate') !== -1) {
+      activate_door_south();
+      return;
+    }
+  }
+  print("Message ", msg, ' was ignored');
+}, null);
+print('subscribed');
+
+
 let homie_msg_ix = 0;
 let homie_init = false;
 
@@ -117,17 +132,6 @@ Timer.set(Cfg.get("homie.pubinterval"), true, function() {
     }
   }
 }, null);
-
-// subscribe to homie set commands
-MQTT.sub(tr + 'south-door/activate/set', function(conn, topic, msg) {
-  print('Topic:', topic, 'message:', msg);
-  if (msg === '1' || msg === 'true') {
-    activate_door_south();
-    return;
-  }
-  print("Message ", msg, ' was ignored');
-}, null);
-print('subscribed');
 
 // Garage relay is activated by shorting to ground
 GPIO.set_pull(s_door_activate, GPIO.PULL_UP);
@@ -181,7 +185,7 @@ Timer.set(1000, true, function() {
     }
   };
 
-  print(JSON.stringify(sdata));
+  //print(JSON.stringify(sdata));
 
   if (counter++ % pubInt === 0 && homie_msg_ix >= homie_setup_msgs.length-1) {
     MQTT.pub(tr + '$state', 'ready', 1, true);
@@ -213,3 +217,26 @@ RPC.addHandler('SouthDoor.Activate', function(args) {
   activate_door_south();
   return { value: "Activated" };
 });
+
+/*
+RPC.addHandler('Status.Read', function(args) {
+  let doors = [
+    {
+      name: Cfg.get("doors.0.name"),
+      status: 
+    }
+  ];
+  return { 
+    cc: {
+      tempf: SensorUtils.fahrenheit(dht.getTemp()),
+      rh: dht.getHumidity(),
+      now: time_now_fmt()
+    },
+    doors: [
+      {
+        name: 
+      }
+    ]
+  };
+});
+*/

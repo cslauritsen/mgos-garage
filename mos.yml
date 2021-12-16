@@ -1,6 +1,6 @@
 author: mongoose-os
 description: A Mongoose OS app skeleton
-version: 1.0
+version: 1.1
 
 libs_version: ${mos.version}
 modules_version: ${mos.version}
@@ -25,14 +25,17 @@ filesystem:
 config_schema:
   - ["project.name", "s", "garage", {title: "Project Name"}]
   - ["garage", "o", {title: "My app custom settings"}]
-  - ["garage.bool_value", "b", false, {title: "Some boolean value"}]
-  - ["garage.string_value", "s", "", {title: "Some string value"}]
-  - ["garage.int_value", "i", 123, {title: "Some integer value"}]
-  - ["garage.dht_pin", "i", 0, {title: "DHT GPIO Pin"}]
+  - ["garage.door_count", "i",  1, { title: "Number of Doors connected"} ]
+  - ["garage.door.a.name", "s",  "North Door", { title: "Human-friendly name of door 0"} ]
+  - ["garage.door.a.pin.contact", "i",  5, { title: "Digital GPIO PIN for door closed contact LOW=active"} ]
+  - ["garage.door.a.pin.activate", "i", 2, { title: "Digital GPIO PIN for door activate relay, should out LOW on boot,  LOW=active"} ]
+  - ["garage.door.b.name", "s",  "South Door", { title: "Human-friendly name of door 1"} ]
+  - ["garage.door.b.pin.contact", "i",  8, { title: "Digital GPIO PIN for door open contact LOW=active"} ]
+  - ["garage.door.b.pin.activate", "i",  3, { title: "Digital GPIO PIN for door activate relay, should output LOW on boot, LOW=active"} ]
+
+  - ["garage.dht_pin", "i", 0, {title: "DHT GPIO Pin Number"}]
+
   - ["garage.mqttPubInterval", "i", 60, {title: "How many seconds between MQTT publications"}]
-  - ["garage.south_door_contact", "i",  13, { title: "Contact PIN to detect South Door Open/Closed"}]
-  - ["garage.north_door_contact", "i",  12, { title: "Contact PIN to detect North Door Open/Closed"}]
-  - ["garage.south_door_activation_pin", "i",  4, { title: "GPIO PIN to activate South door opener"}]
   - ["garage.door_activate_millis", "i",  500, { title: "Milliseconds to leave door relay activated"}]
   - ["mqtt.server", "s",  "192.168.1.5", { title: "MQTT Server"} ]
   - ["mqtt.will_topic", "s",  "homie/${device.id}/$state", { title: "MQTT LWT message topic prescribed by Homie 4.0 spec"} ]
@@ -42,6 +45,14 @@ config_schema:
   - ["mqtt.max_unsent", "i",  35, { title: "Max unsent bytes before sending again"}]
   - ["homie.pubinterval", "i",  200, { title: "Millis to wait before sending another home cfg msg"}]
   - ["rpc.mqtt.enable", "b",  true, { title: "MQTT RPC enabled"} ]
+  - ["debug.udp_log_addr", "s",  "192.168.1.5:31339", { title: "UDP log target"} ]
+  - ["debug.level", 3]
+
+# The following values allow the device to know when sunrise and sunset are
+  - ["sys.tz_spec", "s", "EST5EDT4,M4.1.0/02:00:00,M10.5.0/02:00:00", {title: "See formats for the TZ env var: \"man tzset\". Formats like \":/path/to/file\" are not supported"}]
+  - ["device.location.lat", 41.45944444444445 ]
+  - ["device.location.lon", -81.55527777777777 ]
+
 
 # These settings get compiled into the C structure, and can be accessed
 # from the C code this way:
@@ -70,13 +81,15 @@ libs:
   - origin: https://github.com/mongoose-os-libs/rpc-mqtt
   - origin: https://github.com/mongoose-os-libs/wifi
   - origin: https://github.com/mongoose-os-libs/dht
-  - origin: https://github.com/mongoose-os-libs/mjs
+  #- origin: https://github.com/mongoose-os-libs/mjs
   - origin: https://github.com/mongoose-os-libs/http-server
   - origin: https://github.com/mongoose-os-libs/ota-http-server 
   - origin: https://github.com/mongoose-os-libs/mqtt
   - origin: https://github.com/mongoose-os-libs/dash
   - origin: https://github.com/mongoose-os-libs/sensor-utils
-  - origin: https://github.com/mongoose-os-libs/adc
+  #- origin: https://github.com/mongoose-os-libs/adc
+  - origin: https://github.com/mongoose-os-libs/wifi-setup-web-ui
+  - origin: https://github.com/mongoose-os-libs/sntp
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
 manifest_version: 2017-09-29
