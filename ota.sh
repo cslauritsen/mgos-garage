@@ -6,4 +6,4 @@ test -f "$1" || {
  exit 1
 }
 
-curl -v -F file=@$1 http://192.168.1.117/update
+curl -v -F file=@$1 http://192.168.1.120/update

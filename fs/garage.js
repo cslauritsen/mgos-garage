@@ -4,7 +4,7 @@
 
       $.get("/rpc/status.read", function(data, status) {
         cell = $("#tempf");
-        if (status === "success") {
+        if (status === "success" && data.tempf) {
           cell.text(data.tempf.toFixed(1) + "°F");
         }
         else {
@@ -13,7 +13,7 @@
         }
 
         cell = $("#rh");
-        if (status === "success") {
+        if (status === "success" && data.rh) {
           cell.text(data.rh.toFixed(1) + "%");
         }
         else {
@@ -43,8 +43,5 @@
           });
         }
       });
-
     });
-
-
   }
