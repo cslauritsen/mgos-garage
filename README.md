@@ -37,8 +37,10 @@ The DHT22 is a low-cost temperature and humidity sensor. Although the DHT22 sens
  ## HTTP
  Issue an HTTP get like so, no paylaod is required. 
  ```bash
- curl http://192.168.1.xxx/rpc/SouthDoor.Activate
+ # replace doora with the "ordinal name" of the door you want to control
+ curl http://192.168.1.xxx/rpc/doora.activate
  ```
+
 
  ## MQTT RPC
  you can send a command via MQTT. This means you don't need to have a static IP for the device, but you will need to know its unique ID. I'm working on enabling auto-discovery in services like OpenHAB by leveraging via the [homie convention](https://homieiot.github.io).
@@ -48,7 +50,7 @@ In the example below, "alpha" is "correlation ID", that is, an identifier that w
  ```bash
  mqttpub -h 192.168.1.5 \
     -t esp8266_7E5E96/rpc  \
-    '{id: 1, "src":"alpha", "method": "SouthDoor.Activate"}' 
+    '{id: 1, "src":"alpha", "method": "doora.activate"}' 
  ```
 
 ## MQTT Trigger
@@ -60,6 +62,8 @@ When you use the `mos flash` command certain configurations parameters (like WiF
 
 The simplest method is to use an HTTP POST:
 ```bash
-cd project-repo-root
-curl -i -F filedata=@./build/fw.zip http://192.168.1.xxx/update
+# Download a release
+curl -L -o /tmp/fw.zip https://github.com/cslauritsen/mgos-garage/suites/4705502219/artifacts/128915499
+# Upload the firmware, replace the IP address
+curl -i -F filedata=@/tmp/fw.zip http://192.168.1.xxx/update
 ```

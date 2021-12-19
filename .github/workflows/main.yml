@@ -65,8 +65,18 @@ jobs:
           github_token: ${{secrets.GITHUB_TOKEN}}
           sha: ${{ steps.git_commit.outputs.sha }}
 
+#     - name: Upload Artifact
+#       uses: actions/upload-artifact@v2
+#       with:
+#         name: fw-nodemcu-v${{ steps.next_version.outputs.version}}.zip
+#         path: ./build/fw.zip
+
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
         with:
-          name: fw-nodemcu-v${{ steps.next_version.outputs.version}}.zip
-          path: ./build/fw.zip
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/fw.zip
+          asset_name: fw-nodemcu-v${{ steps.next_version.outputs.version}}.zip
+          asset_content_type: application/zip
