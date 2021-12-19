@@ -7,7 +7,6 @@ ESP8266 LoLin NodeMCU.
 
 It's important to select the correct PINs for the relays so that you don't get cycling as the device resets, powers on, etc. The relays assume they are controlled from a pin pulled high. In other words, they switched on by transitioning their pin from HI to LO.
 
-In this case, I'm using GPIO 4 & 5 to control the door motor activation.
 
 ## Wiring Legend
 Device                | Silkscreen | Logical Name 

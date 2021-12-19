@@ -2,7 +2,7 @@
   function load_data() {
     $(document).ready(function() {
 
-      $.get("/rpc/status2.read.json", function(data, status) {
+      $.get("/rpc/status.read", function(data, status) {
         cell = $("#tempf");
         if (status === "success") {
           cell.text(data.tempf.toFixed(1) + "°F");
