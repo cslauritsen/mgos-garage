@@ -2,7 +2,7 @@
   function load_data() {
     $(document).ready(function() {
 
-      $.get("/rpc/status.read.json", function(data, status) {
+      $.get("/rpc/status2.read.json", function(data, status) {
         cell = $("#tempf");
         if (status === "success") {
           cell.text(data.tempf.toFixed(1) + "°F");
@@ -20,30 +20,31 @@
           cell.text(status);
           cell.css("background-color", "yellow");
         }
-        $("#h2_door_a").text(data.doors[0].name);
-        $("#status_a").text(data.doors[0].status);
-        $("#status_a").css("background-color", 
-          data.doors[0].status === "closed" ? "green" : "red");
-        $("#h2_door_b").text(data.doors[1].name);
-        $("#status_b").text(data.doors[1].status);
-        $("#status_b").css("background-color", 
-          data.doors[1].status === "closed" ? "green" : "red");
-        $("#now").text(data.currentTime);
+
+        for (var i=0; i < data.doors.length; i++) {
+          var d = data.doors[i];
+          console.log('iterating door ' + i);
+          var div = $('#door_template').clone().prop('id', 'door-' + i);
+          div.appendTo('#body');
+
+          div.find('h2').text(d.name);
+          div.find('.statusdiv').text('Status: ' + d.status);
+          div.find('.statusdiv').css("background-color", d.status === "closed" ? "green" : "pink");
+
+          let doorLetter = String.fromCharCode(i + ('a'.charCodeAt(0)));
+          console.log('Door ' + i + ' letter: ' + doorLetter);
+          let nm = d.name;
+          div.find('.actionbtn').click(function() {
+            $('<div class="alert alert-success">' + nm + ' activated!</div>').insertBefore('#topdiv').delay(3000).fadeOut();
+            $.get("/rpc/door" + doorLetter + ".activate", function(data, status){
+              console.log("Activate Result: " + data.value + "\nStatus: " + status);
+            });
+            return false;
+          });
+        }
       });
 
     });
 
-    $('#btnactivate_a').click(function() {
-      $.get("/rpc/doora.activate", function(data, status){
-        alert("Closing Result: " + data.value + "\nStatus: " + status);
-      });
-      return false;
-    });
 
-    $('#btnactivate_b').click(function() {
-      $.get("/rpc/doorb.activate", function(data, status){
-        alert("Closing Result: " + data.value + "\nStatus: " + status);
-      });
-      return false;
-    });
   }

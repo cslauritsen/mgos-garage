@@ -10,60 +10,72 @@
 
     <title>The Garage</title>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <style>
+      #door_template { display: none;}
+      button {
+        margin-top: 15px;
+      }
+      #topdiv {
+        height: 10px;
+      }
+    </style>
    
   </head>
-  <body onload="load_data()">
-    <h1>Garage</h1>
+  <body onload="load_data()" id="body">
+   
+    <div id="topdiv"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
     <script src="garage.js" ></script>
 
-    <img src="garage.svg" width="200" />
+    <h1>Garage</h1>
+    <img src="garage.svg" width="100" style="display: inline; float: left;"/>
+    <div class="container">
+      <div class="row">
 
+      </div>
+      <div class="row" style="width: 150px;">
+      </div>
+    </div>
 
     <h2> Current Conditions </h2>
-    <div class="container">
+    <div class="container uber-container">
 
-    <div class="row">
-      <div class="col"> <label>Temp</label> </div>
-      <div class="col" id="tempf"> </div>
-    </div>
-
-    <div class="row">
-      <div class="col"> <label>Relative Humidity</label> </div>
-      <div class="col" id="rh" > </div>
-    </div>
-
-    <div class="row">
-      <div class="col"> <label>Local Time</label> </div>
-      <div class="col" id="now" > </div>
-    </div>
-  </div>
-
-    <h2 id="h2_door_a">Door A</h2>
-    <div class="container">
       <div class="row">
-        <div class="col"> <label>Status</label> </div>
-        <div class="col" id="status_a"> </div>
-        <form action="#"> 
-          <div class="container-fluid">
-            <button id="btnactivate_a" class="actionbtn">Activate</button>
-          </div>
-        </form>
+        <div class="col"> <label>Temp</label> </div>
+        <div class="col" id="tempf"> </div>
+      </div>
+
+      <div class="row">
+        <div class="col"> <label>Relative Humidity</label> </div>
+        <div class="col" id="rh" > </div>
+      </div>
+
+      <div class="row">
+        <div class="col"> <label>Local Time</label> </div>
+        <div class="col" id="now" > </div>
       </div>
     </div>
 
-    <h2 id="h2_door_b">Door B</h2>
-    <div class="container">
-      <div class="row">
-        <div class="col"> <label>Status</label> </div>
-        <div class="col" id="status_b"> </div>
-        <form action="#"> 
-          <div class="container-fluid">
-            <button id="btnactivate_b" class="actionbtn">Activate</button>
+          <div id="door_template" class="row">
+            <h2>Door A</h2>
+            <div class="container">
+              <div class="row">
+                <div class="col statusdiv"> 
+                  <label>Status</label> 
+                </div>
+                <div class="col"> </div>
+                  <form action="#"> 
+                    <div class="container-fluid">
+                      <button class="actionbtn">Activate</button>
+                    </div>
+                  </form>
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
-    </div>
 
+    <div class="container">
+      <a href="wifi.html">Setup WiFi Network</a>
+    </div>
   </body>
 </html>

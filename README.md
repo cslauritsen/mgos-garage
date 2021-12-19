@@ -13,7 +13,7 @@ In this case, I'm using GPIO 4 & 5 to control the door motor activation.
 Device                | Silkscreen | Logical Name 
 ------------          | ---------- | -------------
 DHT22 Temp/RH         | D3         | GPIO0
-Door A Closed Contact | D6         | GPIO12
+Door A Closed Contact | D1         | GPIO5
 Door A Activation     | D4         | GPIO2
 Door B Activation     | ??         | ??
 

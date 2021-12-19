@@ -17,6 +17,7 @@ extern "C" {
 #include <mgos_time.h>
 #include <mgos_timers.h>
 #include <mgos_dht.h>
+#include <mgos_mqtt.h>
 }
 
 namespace garage {
@@ -33,20 +34,23 @@ class Door {
         /** Human-friendly name of the door, e.g. "North Door" */
         std::string name;
 
+        /** unique, sortable name useful in MQTT topic */
+        char* ordinalName;
+
+        /** MQTT topic for open/closed status updates */
+        std::string statusTopic;
+
         /** pin conntected to a reed contact switch (Active LO) */
         int contactPin;   
 
         /** pin connected to a relay (Active LO) */
         int activateRelayPin; 
 
-        /** the current state of the door */
-        Status status;
-
     public:
 
         ~Door(void);
 
-        Door(const char *aName, int aContactPin, int aActivatePin);
+        Door(const char *aName, int aContactPin, int aActivatePin, int index);
 
         /** Momentarily activates the relay to similuate a doorbell press. */
         void activate(void);
@@ -63,8 +67,15 @@ class Door {
         /** Returns door status as string */
         std::string getStatusString(void);
 
-        inline int getContactPin() { return contactPin; }
-        inline int getActivateRelayPin() { return activateRelayPin; }
+        int getContactPin() { return contactPin; }
+        int getActivateRelayPin() { return activateRelayPin; }
+        std::string getOrdinalName() { return ordinalName; }
+        std::string getStatusTopic() { return statusTopic; }
+
+        bool publishIsOpen(int reading);
+
+        /** Value to control frequency of interrupt firing */
+        double debounce;
     };
   class Device {
         private:
@@ -72,6 +83,8 @@ class Door {
             char current_time[32];
             struct mgos_dht *dht;
             Door* doors[maxDoors];
+            int doorCount;
+            std::string deviceId;
 
         public:
             Device();
@@ -81,7 +94,9 @@ class Door {
             int getDhPin();
             std::string currentTime();
             std::string getStatusJson();
+            std::string getDeviceId() {return deviceId;}
             Door* getDoorAt(int ix);
+
 
     };
 

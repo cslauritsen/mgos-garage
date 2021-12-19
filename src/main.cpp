@@ -65,6 +65,19 @@ static void activate_cb(struct mg_rpc_request_info *ri, void *cb_arg,
   (void) fi;
 }
 
+static void door_count_cb(struct mg_rpc_request_info *ri, void *cb_arg,
+                   struct mg_rpc_frame_info *fi, struct mg_str args) {
+  mg_rpc_send_responsef(ri, "{ value: %d }", mgos_sys_config_get_garage_door_count());
+  (void) fi;
+}
+
+static void door_read_cb(struct mg_rpc_request_info *ri, void *cb_arg,
+                   struct mg_rpc_frame_info *fi, struct mg_str args) {
+  Door *door = (Door*) cb_arg;
+  mg_rpc_send_responsef(ri, "{ value: \"%s\" }", door->getStatusString().c_str());
+  (void) fi;
+}
+
 static void status_cb(struct mg_rpc_request_info *ri, void *cb_arg,
                    struct mg_rpc_frame_info *fi, struct mg_str args) {
   Device *device = (Device*) cb_arg;
@@ -98,6 +111,21 @@ static void repeat_cb(void *arg) {
     uint16_t res = mgos_mqtt_pub(topic, msg.c_str(), (size_t) msg.length(), qos, retain);
     (void) res;
   }
+}
+
+static void int_door_contact_cb(int pin, void *obj) {
+  Door *door = (Door *) obj;
+  int reading = mgos_gpio_read(pin);
+  LOG(LL_DEBUG, ("Int pin %d: %d", pin, reading));
+
+  double interrupt_millis = mgos_uptime() * 1000.0;
+    if (abs(interrupt_millis - door->debounce) > mgos_sys_config_get_time_debounce_millis()) {
+      door->publishIsOpen(reading);
+    }
+    else {
+      LOG(LL_DEBUG, ("interrupt debounced pin %d", pin));
+    }
+    door->debounce = interrupt_millis;
 }
 
 /*
@@ -147,8 +175,24 @@ enum mgos_app_init_result mgos_app_init(void) {
 
   Device *device = new Device();
 
-  if (doorCount > 0) mg_rpc_add_handler(mgos_rpc_get_global(), "doora.activate", NULL, activate_cb, device->getDoorAt(0));
-  if (doorCount > 1) mg_rpc_add_handler(mgos_rpc_get_global(), "doorb.activate", NULL, activate_cb, device->getDoorAt(1));
+  char *uri = NULL;
+  char handler_nm[32];
+  memset(handler_nm, 0, sizeof(handler_nm));
+  for (int i=0; i < doorCount; i++) {
+    Door *door = device->getDoorAt(i);
+    asprintf(&uri, "door%c.activate", ('a' + i));
+    //snprintf(handler_nm, "door%c.%s", ('a' + i), "activate");
+    mg_rpc_add_handler(mgos_rpc_get_global(), uri, NULL, activate_cb, door);
+
+    asprintf(&uri, "door%c.read", ('a' + i));
+    //snprintf(handler_nm, "door%c.%s", ('a' + i), "read");
+    mg_rpc_add_handler(mgos_rpc_get_global(), uri, NULL, door_read_cb, door);
+
+    mgos_gpio_enable_int(door->getContactPin());
+    mgos_gpio_set_int_handler(door->getContactPin(), MGOS_GPIO_INT_EDGE_ANY, int_door_contact_cb, door);
+  }
+
+  mg_rpc_add_handler(mgos_rpc_get_global(), "door.count", NULL, door_count_cb, NULL);
   mg_rpc_add_handler(mgos_rpc_get_global(), "status.read", NULL, status_cb, device);
   mg_rpc_add_handler(mgos_rpc_get_global(), "rh.read", NULL, rh_cb, device);
   mg_rpc_add_handler(mgos_rpc_get_global(), "tempf.read", NULL, tempf_cb, device);
