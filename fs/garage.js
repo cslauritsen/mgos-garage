@@ -35,7 +35,7 @@
           console.log('Door ' + i + ' letter: ' + doorLetter);
           let nm = d.name;
           div.find('.actionbtn').click(function() {
-            $('<div class="alert alert-success">' + nm + ' activated!</div>').insertBefore('#topdiv').delay(3000).fadeOut();
+            $('<div class="alert alert-success floating-alert" >' + nm + ' activated!</div>').insertBefore('#topdiv').delay(3000).fadeOut();
             $.get("/rpc/door" + doorLetter + ".activate", function(data, status){
               console.log("Activate Result: " + data.value + "\nStatus: " + status);
             });

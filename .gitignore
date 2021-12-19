@@ -3,4 +3,6 @@ core*
 deps
 delme*
 /junk/
-
+rpc/
+.*.swp
+.*.swo

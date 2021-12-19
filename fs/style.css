@@ -1,0 +1,15 @@
+#door_template { display: none;}
+button {
+  margin-top: 15px;
+}
+#topdiv {
+  height: 10px;
+}
+.alert {
+    position:fixed; 
+    top: 0px; 
+    left: 0px; 
+    width: 90%;
+    z-index:9999; 
+    border-radius:10px;
+}
