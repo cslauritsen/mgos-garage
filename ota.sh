@@ -1,3 +1,9 @@
 #!/bin/bash
 
-curl -v -F file=@build/fw.zip http://192.168.1.117/update
+
+test -f "$1" || {
+ echo no such file $1
+ exit 1
+}
+
+curl -v -F file=@$1 http://192.168.1.117/update

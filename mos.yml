@@ -29,7 +29,7 @@ config_schema:
   - ["garage.name", "s", "My Garage", {title: "Name of Garage"}]
   - ["garage.door_count", "i",  1, { title: "Number of Doors connected"} ]
   - ["garage.door.a.name", "s",  "North Door", { title: "Human-friendly name of door 0"} ]
-  - ["garage.door.a.pin.contact", "i",  5, { title: "Digital GPIO PIN for door closed contact LOW=active"} ]
+  - ["garage.door.a.pin.contact", "i",  4, { title: "Digital GPIO PIN for door closed contact LOW=active"} ]
   - ["garage.door.a.pin.activate", "i", 2, { title: "Digital GPIO PIN for door activate relay, should out HI on boot, LO=active"} ]
   - ["garage.door.b.name", "s",  "South Door", { title: "Human-friendly name of door 1"} ]
   - ["garage.door.b.pin.contact", "i",  8, { title: "Digital GPIO PIN for door open contact LOW=active"} ]
