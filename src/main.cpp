@@ -111,13 +111,13 @@ static void repeat_cb(void *arg) {
     uint16_t res = mgos_mqtt_pub((deviceBaseTopic + "/status").c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
     float tempf = device->tempf();
     if (!isnan(tempf)) {
-      std::string m = std::string(device->tempf());
+      std::string m = std::to_string(device->tempf());
       res = mgos_mqtt_pub((deviceBaseTopic + "/tempf").c_str(), m.c_str(), (size_t) m.length(), qos, retain);
     }
     float rh = device->rh();
     if (!isnan(rh)) {
-      std::string rh = std::string(device->rh());
-      res = mgos_mqtt_pub((deviceBaseTopic + "/rh").c_str(), rh.c_str(), (size_t) rh.length(), qos, retain);
+      std::string m = std::to_string(device->rh());
+      res = mgos_mqtt_pub((deviceBaseTopic + "/rh").c_str(), m.c_str(), (size_t) m.length(), qos, retain);
     }
 
     for (int i=0; device->getDoorAt(i); i++) {
@@ -127,8 +127,8 @@ static void repeat_cb(void *arg) {
       topic += door->getOrdinalName();
       topic += "/status";
 
-      std::string msg = door->getStatusString();
-      res = mgos_mqtt_pub(topic.c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
+      std::string m = door->getStatusString();
+      res = mgos_mqtt_pub(topic.c_str(), m.c_str(), (size_t) m.length(), qos, retain);
     }
 
     (void) res;
