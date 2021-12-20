@@ -104,11 +104,33 @@ static void repeat_cb(void *arg) {
   LOG(LL_INFO, ("TempF %2.1f degF", device->tempf()));
   LOG(LL_INFO, ("RH %2.1f %%", device->rh()));
   if (mgos_sys_config_get_mqtt_enable()) {
+    std::string deviceBaseTopic = std::string(device->getDeviceId());
     std::string msg = device->getStatusJson();
     int qos = 0;
-    bool retain = false;
-    const char* topic = "garage/status";
-    uint16_t res = mgos_mqtt_pub(topic, msg.c_str(), (size_t) msg.length(), qos, retain);
+    bool retain = true;
+    uint16_t res = mgos_mqtt_pub((deviceBaseTopic + "/status").c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
+    float tempf = device->tempf();
+    if (!isnan(tempf)) {
+      std::string m = std::string(device->tempf());
+      res = mgos_mqtt_pub((deviceBaseTopic + "/tempf").c_str(), m.c_str(), (size_t) m.length(), qos, retain);
+    }
+    float rh = device->rh();
+    if (!isnan(rh)) {
+      std::string rh = std::string(device->rh());
+      res = mgos_mqtt_pub((deviceBaseTopic + "/rh").c_str(), rh.c_str(), (size_t) rh.length(), qos, retain);
+    }
+
+    for (int i=0; device->getDoorAt(i); i++) {
+      Door *door = device->getDoorAt(i);
+      std::string topic = std::string(device->getDeviceId());
+      topic += "/";
+      topic += door->getOrdinalName();
+      topic += "/status";
+
+      std::string msg = door->getStatusString();
+      res = mgos_mqtt_pub(topic.c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
+    }
+
     (void) res;
   }
 }

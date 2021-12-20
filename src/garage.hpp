@@ -40,6 +40,9 @@ class Door {
         /** MQTT topic for open/closed status updates */
         std::string statusTopic;
 
+        /** MQTT topic for activation command */
+        std::string activateTopic;
+
         /** pin conntected to a reed contact switch (Active LO) */
         int contactPin;   
 
@@ -71,6 +74,7 @@ class Door {
         int getActivateRelayPin() { return activateRelayPin; }
         std::string getOrdinalName() { return ordinalName; }
         std::string getStatusTopic() { return statusTopic; }
+        std::string getActivateTopic() { return activateTopic; }
 
         bool publishIsOpen(int reading);
 

@@ -10,6 +10,15 @@ extern "C" {
 }
 #define ENDL "\n"
 
+static void activate_sub_handler(struct mg_connection *nc, const char *topic,
+                              int topic_len, const char *msg, int msg_len,
+                              void *ud) {
+     Door *door = (Door*) ud;
+     if (msg_len > 0 && *msg == '1') {
+         door->activate();
+     }
+}
+
 namespace garage {
     Device::Device() {
         memset(this->current_time, 0, sizeof(this->current_time));
@@ -56,6 +65,8 @@ namespace garage {
         }
 
         this->deviceId = std::string(mgos_sys_config_get_device_id());
+
+        
     }
 
     Device::~Device() {
@@ -164,7 +175,17 @@ namespace garage {
         this->statusTopic += std::string(this->getOrdinalName());
         this->statusTopic += "/open";
 
-        //mgos_gpio_setup_output(this->getActivateRelayPin, RELAY_STATE_INACTIVE);
+        // Activation occurs when message body is 1
+        // ignored otherwise
+        this->activateTopic = std::string(mgos_sys_config_get_device_id());
+        this->activateTopic += "/";
+        this->activateTopic += std::string(this->getOrdinalName());
+        this->activateTopic += "/activate";
+
+        if (mgos_sys_config_get_mqtt_enable()) {
+            mgos_mqtt_sub(this->activateTopic.c_str(), activate_sub_handler, this);
+        }
+
         LOG(LL_INFO, ("Cfg door %s, ctc=%d act=%d ord=%s", this->name.c_str(), this->contactPin, this->activateRelayPin, this->ordinalName));
     }
 
