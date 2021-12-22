@@ -10,16 +10,16 @@ extern "C" {
 }
 #define ENDL "\n"
 
-static void activate_sub_handler(struct mg_connection *nc, const char *topic,
-                              int topic_len, const char *msg, int msg_len,
-                              void *ud) {
-     Door *door = (Door*) ud;
-     if (msg_len > 0 && *msg == '1') {
-         door->activate();
-     }
-}
 
 namespace garage {
+    static void activate_sub_handler(struct mg_connection *nc, const char *topic,
+                                int topic_len, const char *msg, int msg_len,
+                                void *ud) {
+        Door *door = (Door*) ud;
+        if (msg_len > 0 && *msg == '1') {
+            door->activate();
+        }
+    }
     Device::Device() {
         memset(this->current_time, 0, sizeof(this->current_time));
         this->dhPin = mgos_sys_config_get_garage_dht_pin();
@@ -144,14 +144,14 @@ namespace garage {
     }
 
     Door* Device::getDoorAt(int ix) {
-        int i=0;
-        for (Door *door = *doors; door && i <= ix; door++) {
-            if (i == ix) {
-                return door;
-            }
-            i++;
+        if (ix >= maxDoors) {
+            return NULL;
         }
-        return NULL;
+        return doors[ix];
+    }
+
+    void Device::setIpAddr(std::string s) {
+        this->ipAddr = std::string(s);
     }
 
     Door::Door(const char* aName, int aContactPin, int aActivatePin, int index) {
@@ -159,7 +159,9 @@ namespace garage {
         this->contactPin = aContactPin;
         this->name = std::string(aName);
 
-        asprintf(&this->ordinalName, "door%c", ('a'+index));
+        char *tmp;
+        asprintf(&tmp, "door%c", ('a'+index));
+        this->ordinalName = std::string(tmp);
 
         mgos_gpio_set_mode(this->contactPin, MGOS_GPIO_MODE_INPUT);
         mgos_gpio_setup_input(this->contactPin, MGOS_GPIO_PULL_UP);
@@ -172,21 +174,21 @@ namespace garage {
         // the 1 or 0 correlates to HI or LO on the pin, respectively
         this->statusTopic = std::string(mgos_sys_config_get_device_id());
         this->statusTopic += "/";
-        this->statusTopic += std::string(this->getOrdinalName());
+        this->statusTopic += this->getOrdinalName();
         this->statusTopic += "/open";
 
         // Activation occurs when message body is 1
         // ignored otherwise
         this->activateTopic = std::string(mgos_sys_config_get_device_id());
         this->activateTopic += "/";
-        this->activateTopic += std::string(this->getOrdinalName());
+        this->activateTopic += this->getOrdinalName();
         this->activateTopic += "/activate";
 
         if (mgos_sys_config_get_mqtt_enable()) {
             mgos_mqtt_sub(this->activateTopic.c_str(), activate_sub_handler, this);
         }
 
-        LOG(LL_INFO, ("Cfg door %s, ctc=%d act=%d ord=%s", this->name.c_str(), this->contactPin, this->activateRelayPin, this->ordinalName));
+        LOG(LL_INFO, ("Cfg door %s, ctc=%d act=%d ord=%s", this->name.c_str(), this->contactPin, this->activateRelayPin, this->ordinalName.c_str()));
     }
 
     static void _deactivate_cb(void *door) {

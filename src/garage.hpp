@@ -35,7 +35,7 @@ class Door {
         std::string name;
 
         /** unique, sortable name useful in MQTT topic */
-        char* ordinalName;
+        std::string ordinalName;
 
         /** MQTT topic for open/closed status updates */
         std::string statusTopic;
@@ -89,6 +89,7 @@ class Door {
             Door* doors[maxDoors];
             int doorCount;
             std::string deviceId;
+            std::string ipAddr;
 
         public:
             Device();
@@ -99,6 +100,9 @@ class Door {
             std::string currentTime();
             std::string getStatusJson();
             std::string getDeviceId() {return deviceId;}
+            int getDoorCount() { return doorCount; }
+            std::string getIpAddr() { return ipAddr; }
+            void setIpAddr(std::string s);
             Door* getDoorAt(int ix);
 
 

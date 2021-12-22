@@ -16,14 +16,13 @@
  */
 
 #include <garage.hpp>
+#include <string>
+#include <list>
+#include <iostream>
+#include <memory>
 
-using namespace garage;
 
-#ifdef __cplusplus
 extern "C" {
-#endif
-
-
 // declared in build_info.c
 extern char* build_version;
 extern char* build_id;
@@ -43,6 +42,7 @@ extern char* build_timestamp;
 #include <mgos_timers.h>
 #include <mgos_time.h>
 #include <mgos_mqtt.h>
+#include <mg_rpc_channel_loopback.h>
 
 #ifdef __DATE__
 #define BUILD_DATE __DATE__ 
@@ -55,7 +55,44 @@ extern char* build_timestamp;
 #else
 #define BUILD_TIME "?"
 #endif
+}
 
+using namespace garage;
+
+static void sys_ip_cb(struct mg_rpc *c, void *cb_arg, struct mg_rpc_frame_info *fi, struct mg_str result, int error_code, struct mg_str error_msg) {
+  Device *device = (Device*) cb_arg;
+  LOG(LL_INFO, ("error code: %d", error_code));
+  char *ip = NULL;
+  char *id = NULL;
+  int scan_result = json_scanf(result.p, result.len, "{id: %Q, wifi: {sta_ip: %Q}}", &id, &ip);
+
+  if (id) {
+    LOG(LL_DEBUG, ("id: %s", id));
+    free(id);
+  }
+  LOG(LL_DEBUG, ("jsonf_scan result: %d", scan_result));
+  if (scan_result < 0) {
+    LOG(LL_ERROR, ("json scanf error"));
+  }
+  else if (0 == scan_result) {
+    LOG(LL_ERROR, ("json scanf keys not found"));
+  }
+  else {
+    if (ip) {
+      LOG(LL_INFO, ("ip: %s", ip));
+      device->setIpAddr(std::string(ip));
+      free(ip);
+    }
+    else {
+      LOG(LL_ERROR, ("json_scanf failed to allocate"));
+    }
+  }
+}
+
+static void get_sys_ip(void *cb_arg) {
+  struct mg_rpc_call_opts opts = {.dst = mg_mk_str(MGOS_RPC_LOOPBACK_ADDR) };
+  mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("Sys.GetInfo"), sys_ip_cb, cb_arg, &opts, NULL);
+}
 
 static void activate_cb(struct mg_rpc_request_info *ri, void *cb_arg,
                    struct mg_rpc_frame_info *fi, struct mg_str args) {
@@ -101,36 +138,68 @@ static void tempf_cb(struct mg_rpc_request_info *ri, void *cb_arg,
 
 static void repeat_cb(void *arg) {
   Device *device = (Device *) arg;
-  LOG(LL_INFO, ("TempF %2.1f degF", device->tempf()));
-  LOG(LL_INFO, ("RH %2.1f %%", device->rh()));
+  float f = device->tempf();
+  if (isnan(f)) {
+    LOG(LL_ERROR, ("DHT22 returning NaN"));
+  }
+  else {
+    LOG(LL_INFO, ("TempF %2.1f degF", device->tempf()));
+    LOG(LL_INFO, ("RH %2.1f %%", device->rh()));
+  }
+
   if (mgos_sys_config_get_mqtt_enable()) {
+    LOG(LL_DEBUG, ("Publishing device status"));
     std::string deviceBaseTopic = std::string(device->getDeviceId());
     std::string msg = device->getStatusJson();
     int qos = 0;
     bool retain = true;
-    uint16_t res = mgos_mqtt_pub((deviceBaseTopic + "/status").c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
-    float tempf = device->tempf();
-    if (!isnan(tempf)) {
-      std::string m = std::to_string(device->tempf());
-      res = mgos_mqtt_pub((deviceBaseTopic + "/tempf").c_str(), m.c_str(), (size_t) m.length(), qos, retain);
+    uint16_t res = 0;
+    char m[16];
+    std::string topic;
+
+    topic = deviceBaseTopic + "/status";
+    res = mgos_mqtt_pub(topic.c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
+
+    LOG(LL_DEBUG, ("Publishing tempf"));
+    f = device->tempf();
+    topic = deviceBaseTopic + "/tempf";
+    if (!isnan(f)) {
+      size_t len = snprintf(m, sizeof(m), "%2.1f", f);
+      if (len > 0) {
+        res = mgos_mqtt_pub(topic.c_str(), m, (size_t) len, qos, retain);
+      }
     }
-    float rh = device->rh();
-    if (!isnan(rh)) {
-      std::string m = std::to_string(device->rh());
-      res = mgos_mqtt_pub((deviceBaseTopic + "/rh").c_str(), m.c_str(), (size_t) m.length(), qos, retain);
+    else {
+        res = mgos_mqtt_pub(topic.c_str(), "NaN", 3, qos, retain);
     }
 
-    for (int i=0; device->getDoorAt(i); i++) {
+    LOG(LL_DEBUG, ("Publishing rh"));
+    f = device->rh();
+    topic = deviceBaseTopic + "/rh";
+    if (!isnan(f)) {
+      size_t len = snprintf(m, sizeof(m), "%2.1f", f);
+      if (len > 0) {
+        res = mgos_mqtt_pub(topic.c_str(), m, len, qos, retain);
+      }
+    }
+    else {
+        res = mgos_mqtt_pub(topic.c_str(), "NaN", 3, qos, retain);
+    }
+
+    for (int i=0; i < device->getDoorCount(); i++) {
+      LOG(LL_DEBUG, ("Publishing door %d info", i));
       Door *door = device->getDoorAt(i);
-      std::string topic = std::string(device->getDeviceId());
-      topic += "/";
-      topic += door->getOrdinalName();
-      topic += "/status";
+      if (door) {
+        topic = std::string(device->getDeviceId());
+        topic += "/";
+        topic += door->getOrdinalName();
+        topic += "/status";
+        LOG(LL_DEBUG, ("door %d topic %s", i, topic.c_str()));
 
-      std::string m = door->getStatusString();
-      res = mgos_mqtt_pub(topic.c_str(), m.c_str(), (size_t) m.length(), qos, retain);
+        std::string info = door->getStatusString();
+        res = mgos_mqtt_pub(topic.c_str(), info.c_str(), (size_t) info.length(), qos, retain);
+      }
     }
-
     (void) res;
   }
 }
@@ -220,12 +289,16 @@ enum mgos_app_init_result mgos_app_init(void) {
   mg_rpc_add_handler(mgos_rpc_get_global(), "tempf.read", NULL, tempf_cb, device);
 
   mgos_set_timer(60000, 1, repeat_cb, device);
+  mgos_set_timer(15000, 0, get_sys_ip, device);
 
+  std::list<int> l = { 3,1,3,3,7 };
+  for (int n : l) {
+    std::cout << "num: " << n << std::endl;
+    LOG(LL_DEBUG, ("n: %d", n));
+  }
+
+  auto ai = std::make_shared<int>();
+  *ai = 31337;
+  std::cout << "shared ptr deref: " << *ai << std::endl;
   return MGOS_APP_INIT_SUCCESS;
 }
-
-
-
-#ifdef __cplusplus
-}
-#endif
