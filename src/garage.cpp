@@ -111,6 +111,7 @@ namespace garage
         rhProp->setValue((float)50);
         dhtNode->addProperty(rhProp);
         this->homieDhtNode = dhtNode;
+        this->homieDevice->addNode(dhtNode);
 
         this->doorCount = mgos_sys_config_get_garage_door_count();
         int doorIx = -1;

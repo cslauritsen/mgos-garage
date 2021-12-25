@@ -111,73 +111,45 @@ static void publish_door(void *arg)
     }
   }
 }
-
+static mgos_timer_id introduce_timer_id;
 static void introduce_cb(void *arg)
 {
-  return;
-  auto pair = (std::pair<
-               std::list<homie::Message>::iterator,
-               std::list<homie::Message>::iterator> *)arg;
-  if (pair->first == pair->second)
+  static int qos = 1;
+  static bool retain = true;
+
+  auto pair = (std::pair<std::vector<homie::Message> *, int> *)arg;
+  auto vect = *(pair->first);
+  auto vectLen = (int)vect.size();
+  if (pair->second < vectLen)
   {
-    LOG(LL_DEBUG, ("No more intro"));
+    LOG(LL_DEBUG, ("about to publish qos=%d, retain=%d", qos, retain));
+    LOG(LL_DEBUG, ("iter=%d", pair->second));
+    auto msg = vect[pair->second];
+    LOG(LL_DEBUG, ("topic=%s, msg=%s", msg.topic.c_str(), msg.payload.c_str()));
+    auto unsent = mgos_mqtt_num_unsent_bytes();
+    auto maxUnsent = static_cast<size_t>(mgos_sys_config_get_mqtt_max_unsent());
+    auto res = mgos_mqtt_pub(msg.topic.c_str(), msg.payload.c_str(), msg.payload.length(), qos, retain);
+    if (unsent >= maxUnsent)
+    {
+      LOG(LL_WARN, ("MQTT buffer too full %d > %d", unsent, maxUnsent));
+    }
+    else if (res > 0)
+    {
+      // only advance if publication was successful
+      // we will re-try on next invocation if it wasn't
+      pair->second++;
+    }
   }
   else
   {
-    auto it = pair->first;
-    int qos = 1;
-    bool retain = true;
-
-    std::cout
-        << "INTRO: "
-        << it->topic
-        << " "
-        << it->payload
-        << std::endl;
-    auto res = mgos_mqtt_pub(it->topic.c_str(), it->payload.c_str(), it->payload.length(), qos, retain);
-    if (res > 0)
-    {
-      pair->first++;
-    }
+    // no reason to keep the timer running
+    mgos_clear_timer(introduce_timer_id);
+    // no reason to keep the vector allocated
+    delete pair->first;
+    // no reason to keep the pair allocated
+    delete pair;
+    LOG(LL_DEBUG, ("Cleared timer %d", introduce_timer_id));
   }
-}
-
-static void introduce_cb(void *arg)
-{
-    auto pair = (std::pair<std::list<homie::Message> *, int> *)arg;
-    auto lst = pair->first;
-    auto it = lst->begin();
-    for (int i = 0; it != lst->end() && i < pair->second; i++)
-    {
-        it++;
-    }
-
-    if (it == lst->end())
-    {
-        std::cout << "We done ";
-        return;
-    }
-
-    int qos = 1;
-    bool retain = true;
-
-    std::cout
-        << "INTRO: "
-        << it->topic
-        << " "
-        << it->payload
-        << std::endl;
-    auto res = mgos_mqtt_pub(it->topic.c_str(), it->payload.c_str(), it->payload.length(), qos, retain);
-    if (res > 0)
-    {
-        auto msg = *it;
-        it++;
-        pair->second++;
-        std::cout
-            << "  next topic "
-            << msg.topic
-            << std::endl;
-    }
 }
 
 static void repeat_cb(void *arg)
@@ -344,13 +316,12 @@ enum mgos_app_init_result mgos_app_init(void)
   mg_rpc_add_handler(mgos_rpc_get_global(), "tempf.read", NULL, tempf_cb, device);
 
   mgos_set_timer(60000, 1, repeat_cb, device);
+
   auto msgList = device->homieDevice->introduce();
-  auto pair = new std::pair<
-      std::list<homie::Message>::iterator,
-      std::list<homie::Message>::iterator>;
-  pair->first = msgList.begin();
-  pair->second = msgList.end();
-  mgos_set_timer(200, 1, introduce_cb, pair);
+  auto pair = new std::pair<std::vector<homie::Message> *, int>;
+  pair->first = new std::vector<homie::Message>(msgList.begin(), msgList.end());
+  pair->second = 0;
+  introduce_timer_id = mgos_set_timer(200, 1, introduce_cb, pair);
 
 #ifdef HAS_MAX_QOS
   if (mgos_sys_config_get_mqtt_enable())

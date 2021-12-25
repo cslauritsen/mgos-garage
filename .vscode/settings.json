@@ -66,6 +66,12 @@
         "vector": "cpp",
         "list": "cpp",
         "deque": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "iomanip": "cpp",
+        "numeric": "cpp",
+        "stack": "cpp",
+        "strstream": "cpp",
+        "typeindex": "cpp",
+        "variant": "cpp"
     }
 }
