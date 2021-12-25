@@ -15,255 +15,270 @@
  * limitations under the License.
  */
 
-#include <garage.hpp>
-#include <string>
-#include <list>
-#include <iostream>
-#include <memory>
-#include <homie.hpp>
-
-
-extern "C" {
-// declared in build_info.c
-extern char* build_version;
-extern char* build_id;
-extern char* build_timestamp;
-
-#include "mgos.h"
-#include "mgos_app.h"
-#include "mgos_dlsym.h"
-#include "mgos_hal.h"
-#include "mgos_rpc.h"
-//#include "mjs.h"
-#include <mgos_gpio.h>
-#include <mgos_sys_config.h>
-#include <common/cs_dbg.h>
-#include <mgos_app.h>
-#include <mgos_system.h>
-#include <mgos_timers.h>
-#include <mgos_time.h>
-#include <mgos_mqtt.h>
-#include <mg_rpc_channel_loopback.h>
+#include "all.h"
 
 #ifdef __DATE__
-#define BUILD_DATE __DATE__ 
+#define BUILD_DATE __DATE__
 #else
 #define BUILD_DATE "?"
 #endif
 
 #ifdef __TIME__
-#define BUILD_TIME __TIME__ 
+#define BUILD_TIME __TIME__
 #else
 #define BUILD_TIME "?"
 #endif
-}
 
 using namespace garage;
 
-static void test_homie() {
-    homie::Device *d = new homie::Device("device123", "My Device");
-    d->setIpAddr("192.168.1.39");
-
-    homie::Node *dht22Node  = new homie::Node(d, "dht22", "DHT22 Temp/RH Sensor", "DHT22");
-    d->addNode(dht22Node);
-
-    auto tempProp = new homie::Property(dht22Node, "tempf", "Temperature in Fahrenheit", homie::FLOAT, false);
-    tempProp->setUnit(homie::DEGREE_SYMBOL + "F");
-    float tempF = 72.0;
-    tempProp->setValue(tempF);
-    dht22Node->addProperty(tempProp);
-
-    auto rhProp = new homie::Property(dht22Node, "rh", "Temperature in Fahrenheit", homie::FLOAT, false);
-    rhProp->setUnit("%");
-    float rh = 61.0;
-    rhProp->setValue(rh);
-    dht22Node->addProperty(rhProp);
-
-    auto doorNode = new homie::Node(d, "doora", "South Garage Door", "door");
-    d->addNode(doorNode);
-
-    auto openProp = new homie::Property(doorNode, "isopen", "Is Door Open", homie::BOOLEAN, false);
-    doorNode->addProperty(openProp);
-
-    auto relayProp = new homie::Property(doorNode, "relay", "Door Activator", homie::INTEGER, true);
-    doorNode->addProperty(relayProp);
-
-    auto introduction = new std::list<homie::Message *>;
-    d->introduce(introduction);
-    for (auto msg : *introduction) {
-        std::cout << msg->topic 
-        << "[q:" << msg->qos << ",r:" << msg->retained << ']' 
-        << " → " 
-        << msg->payload << std::endl;
-    }
-    delete introduction;
-    delete relayProp;
-    delete openProp;
-    delete rhProp;
-    delete tempProp;
-    delete dht22Node;
-    delete doorNode;
-    delete d;
-}
-
-static void sys_ip_cb(struct mg_rpc *c, void *cb_arg, struct mg_rpc_frame_info *fi, struct mg_str result, int error_code, struct mg_str error_msg) {
-  Device *device = (Device*) cb_arg;
-  LOG(LL_INFO, ("error code: %d", error_code));
-  char *ip = NULL;
-  char *id = NULL;
-  int scan_result = json_scanf(result.p, result.len, "{id: %Q, wifi: {sta_ip: %Q}}", &id, &ip);
-
-  if (id) {
-    LOG(LL_DEBUG, ("id: %s", id));
-    free(id);
+static void activate_sub_handler(struct mg_connection *nc, const char *topic,
+                                 int topic_len, const char *msg, int msg_len,
+                                 void *ud)
+{
+  Door *door = (Door *)ud;
+  if ((msg_len > 0 && *msg == '1') || 0 == strncmp("true", msg, msg_len > 4 ? 4 : msg_len))
+  {
+    door->activate();
   }
-  LOG(LL_DEBUG, ("jsonf_scan result: %d", scan_result));
-  if (scan_result < 0) {
-    LOG(LL_ERROR, ("json scanf error"));
-  }
-  else if (0 == scan_result) {
-    LOG(LL_ERROR, ("json scanf keys not found"));
-  }
-  else {
-    if (ip) {
-      LOG(LL_INFO, ("ip: %s", ip));
-      device->setIpAddr(std::string(ip));
-      free(ip);
-    }
-    else {
-      LOG(LL_ERROR, ("json_scanf failed to allocate"));
-    }
-  }
-}
-
-static void get_sys_ip(void *cb_arg) {
-  struct mg_rpc_call_opts opts = {.dst = mg_mk_str(MGOS_RPC_LOOPBACK_ADDR) };
-  mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("Sys.GetInfo"), sys_ip_cb, cb_arg, &opts, NULL);
 }
 
 static void activate_cb(struct mg_rpc_request_info *ri, void *cb_arg,
-                   struct mg_rpc_frame_info *fi, struct mg_str args) {
-  Door *door = (Door*) cb_arg;
+                        struct mg_rpc_frame_info *fi, struct mg_str args)
+{
+  Door *door = (Door *)cb_arg;
   door->activate();
   mg_rpc_send_responsef(ri, "{ value: \"%s\" }", "OK");
-  (void) fi;
+  (void)fi;
 }
 
 static void door_count_cb(struct mg_rpc_request_info *ri, void *cb_arg,
-                   struct mg_rpc_frame_info *fi, struct mg_str args) {
+                          struct mg_rpc_frame_info *fi, struct mg_str args)
+{
   mg_rpc_send_responsef(ri, "{ value: %d }", mgos_sys_config_get_garage_door_count());
-  (void) fi;
+  (void)fi;
 }
 
 static void door_read_cb(struct mg_rpc_request_info *ri, void *cb_arg,
-                   struct mg_rpc_frame_info *fi, struct mg_str args) {
-  Door *door = (Door*) cb_arg;
+                         struct mg_rpc_frame_info *fi, struct mg_str args)
+{
+  Door *door = (Door *)cb_arg;
   mg_rpc_send_responsef(ri, "{ value: \"%s\" }", door->getStatusString().c_str());
-  (void) fi;
+  (void)fi;
 }
 
 static void status_cb(struct mg_rpc_request_info *ri, void *cb_arg,
-                   struct mg_rpc_frame_info *fi, struct mg_str args) {
-  Device *device = (Device*) cb_arg;
+                      struct mg_rpc_frame_info *fi, struct mg_str args)
+{
+  Device *device = (Device *)cb_arg;
   mg_rpc_send_responsef(ri, "%s", device->getStatusJson().c_str());
-  (void) fi;
+  (void)fi;
 }
 
 static void rh_cb(struct mg_rpc_request_info *ri, void *cb_arg,
-                   struct mg_rpc_frame_info *fi, struct mg_str args) {
-  Device *device = (Device*) cb_arg;
+                  struct mg_rpc_frame_info *fi, struct mg_str args)
+{
+  Device *device = (Device *)cb_arg;
   mg_rpc_send_responsef(ri, "{ value: %5.1f }", device->rh());
-  (void) fi;
+  (void)fi;
 }
 
 static void tempf_cb(struct mg_rpc_request_info *ri, void *cb_arg,
-                   struct mg_rpc_frame_info *fi, struct mg_str args) {
-  Device *device = (Device*) cb_arg;
+                     struct mg_rpc_frame_info *fi, struct mg_str args)
+{
+  Device *device = (Device *)cb_arg;
   mg_rpc_send_responsef(ri, "{ value: %5.1f }", device->tempf());
-  (void) fi;
+  (void)fi;
 }
 
-static void repeat_cb(void *arg) {
-  Device *device = (Device *) arg;
-  float f = device->tempf();
-  if (isnan(f)) {
-    LOG(LL_ERROR, ("DHT22 returning NaN"));
-  }
-  else {
-    LOG(LL_INFO, ("TempF %2.1f degF", device->tempf()));
-    LOG(LL_INFO, ("RH %2.1f %%", device->rh()));
-  }
-
-  if (mgos_sys_config_get_mqtt_enable()) {
-    LOG(LL_DEBUG, ("Publishing device status"));
-    std::string deviceBaseTopic = std::string(device->getDeviceId());
-    std::string msg = device->getStatusJson();
-    int qos = 0;
+static void publish_door(void *arg)
+{
+  if (mgos_sys_config_get_mqtt_enable())
+  {
+    int qos = 1;
     bool retain = true;
-    uint16_t res = 0;
-    char m[16];
+    Door *door = (Door *)arg;
+    auto statusProp = door->homieNode->getProperty(DOOR_CONTACT_PROP);
+    if (statusProp != nullptr)
+    {
+      statusProp->setValue(door->getStatusString());
+      auto payload = door->getStatusString();
+      auto res = mgos_mqtt_pub(statusProp->getPubTopic().c_str(), payload.c_str(), (size_t)payload.length(), qos, retain);
+      LOG(LL_DEBUG, ("%s pub %s %d", door->getOrdinalName().c_str(), payload.c_str(), res));
+    }
+    else
+    {
+      LOG(LL_ERROR, ("%s no prop %s", door->getOrdinalName().c_str(), DOOR_CONTACT_PROP));
+    }
+  }
+}
+
+static void introduce_cb(void *arg)
+{
+  return;
+  auto pair = (std::pair<
+               std::list<homie::Message>::iterator,
+               std::list<homie::Message>::iterator> *)arg;
+  if (pair->first == pair->second)
+  {
+    LOG(LL_DEBUG, ("No more intro"));
+  }
+  else
+  {
+    auto it = pair->first;
+    int qos = 1;
+    bool retain = true;
+
+    std::cout
+        << "INTRO: "
+        << it->topic
+        << " "
+        << it->payload
+        << std::endl;
+    auto res = mgos_mqtt_pub(it->topic.c_str(), it->payload.c_str(), it->payload.length(), qos, retain);
+    if (res > 0)
+    {
+      pair->first++;
+    }
+  }
+}
+
+static void introduce_cb(void *arg)
+{
+    auto pair = (std::pair<std::list<homie::Message> *, int> *)arg;
+    auto lst = pair->first;
+    auto it = lst->begin();
+    for (int i = 0; it != lst->end() && i < pair->second; i++)
+    {
+        it++;
+    }
+
+    if (it == lst->end())
+    {
+        std::cout << "We done ";
+        return;
+    }
+
+    int qos = 1;
+    bool retain = true;
+
+    std::cout
+        << "INTRO: "
+        << it->topic
+        << " "
+        << it->payload
+        << std::endl;
+    auto res = mgos_mqtt_pub(it->topic.c_str(), it->payload.c_str(), it->payload.length(), qos, retain);
+    if (res > 0)
+    {
+        auto msg = *it;
+        it++;
+        pair->second++;
+        std::cout
+            << "  next topic "
+            << msg.topic
+            << std::endl;
+    }
+}
+
+static void repeat_cb(void *arg)
+{
+  Device *device = (Device *)arg;
+  float f = 0.0;
+
+  if (mgos_sys_config_get_mqtt_enable())
+  {
+    LOG(LL_DEBUG, ("Publishing device status"));
+    int qos = 1;
+    bool retain = true;
     std::string topic;
 
-    topic = deviceBaseTopic + "/status";
-    res = mgos_mqtt_pub(topic.c_str(), msg.c_str(), (size_t) msg.length(), qos, retain);
-
-    LOG(LL_DEBUG, ("Publishing tempf"));
+    // DHT Temp
     f = device->tempf();
-    topic = deviceBaseTopic + "/tempf";
-    if (!isnan(f)) {
-      size_t len = snprintf(m, sizeof(m), "%2.1f", f);
-      if (len > 0) {
-        res = mgos_mqtt_pub(topic.c_str(), m, (size_t) len, qos, retain);
+    if (!isnan(f))
+    {
+      auto prop = device->homieDhtNode->getProperty(DHT_PROP_TEMPF);
+      if (prop != nullptr)
+      {
+        prop->setValue(f);
+        std::string payload = prop->getValue();
+        auto res = mgos_mqtt_pub(prop->getPubTopic().c_str(), payload.c_str(), payload.length(), qos, retain);
+        LOG(LL_DEBUG, ("pub %s %2.1f %d", prop->getName().c_str(), f, res));
       }
     }
-    else {
-        res = mgos_mqtt_pub(topic.c_str(), "NaN", 3, qos, retain);
+    else
+    {
+      LOG(LL_DEBUG, ("tempf was NaN"));
     }
 
-    LOG(LL_DEBUG, ("Publishing rh"));
+    // DHT RH
     f = device->rh();
-    topic = deviceBaseTopic + "/rh";
-    if (!isnan(f)) {
-      size_t len = snprintf(m, sizeof(m), "%2.1f", f);
-      if (len > 0) {
-        res = mgos_mqtt_pub(topic.c_str(), m, len, qos, retain);
+    if (!isnan(f))
+    {
+      auto prop = device->homieDhtNode->getProperty(DHT_PROP_RH);
+      if (prop != nullptr)
+      {
+        prop->setValue(f);
+        std::string payload = prop->getValue();
+        auto res = mgos_mqtt_pub(prop->getPubTopic().c_str(), payload.c_str(), payload.length(), qos, retain);
+        LOG(LL_DEBUG, ("pub %s %2.1f %d", prop->getName().c_str(), f, res));
       }
     }
-    else {
-        res = mgos_mqtt_pub(topic.c_str(), "NaN", 3, qos, retain);
+    else
+    {
+      LOG(LL_DEBUG, ("rh was NaN"));
     }
 
-    for (int i=0; i < device->getDoorCount(); i++) {
-      LOG(LL_DEBUG, ("Publishing door %d info", i));
-      Door *door = device->getDoorAt(i);
-      if (door) {
-        topic = std::string(device->getDeviceId());
-        topic += "/";
-        topic += door->getOrdinalName();
-        topic += "/status";
-        LOG(LL_DEBUG, ("door %d topic %s", i, topic.c_str()));
-
-        std::string info = door->getStatusString();
-        res = mgos_mqtt_pub(topic.c_str(), info.c_str(), (size_t) info.length(), qos, retain);
+    // Door Sub (1x only) & Pub (each time)
+    for (auto door : device->getDoors())
+    {
+      if (!door->subscribed)
+      {
+        auto prop = door->homieNode->getProperty(DOOR_ACTIVATE_PROP);
+        if (nullptr != prop)
+        {
+          mgos_mqtt_sub(prop->getSubTopic().c_str(), activate_sub_handler, door);
+          door->subscribed = true;
+          LOG(LL_DEBUG, ("Publishing %s info", door->getOrdinalName().c_str()));
+        }
+        else
+        {
+          LOG(LL_ERROR, ("Door Node has no prop named %s", DOOR_ACTIVATE_PROP));
+        }
       }
+      publish_door(door);
     }
-    (void) res;
+  }
+  else
+  {
+    f = device->tempf();
+    if (isnan(f))
+    {
+      LOG(LL_ERROR, ("DHT22 returning NaN"));
+    }
+    else
+    {
+      LOG(LL_INFO, ("TempF %2.1f degF", device->tempf()));
+      LOG(LL_INFO, ("RH %2.1f %%", device->rh()));
+    }
   }
 }
 
-static void int_door_contact_cb(int pin, void *obj) {
-  Door *door = (Door *) obj;
+static void int_door_contact_cb(int pin, void *obj)
+{
+  Door *door = (Door *)obj;
   int reading = mgos_gpio_read(pin);
   LOG(LL_DEBUG, ("Int pin %d: %d", pin, reading));
 
   double interrupt_millis = mgos_uptime() * 1000.0;
-    if (abs(interrupt_millis - door->debounce) > mgos_sys_config_get_time_debounce_millis()) {
-      door->publishIsOpen(reading);
-    }
-    else {
-      LOG(LL_DEBUG, ("interrupt debounced pin %d", pin));
-    }
-    door->debounce = interrupt_millis;
+  if (abs(interrupt_millis - door->debounce) > mgos_sys_config_get_time_debounce_millis())
+  {
+    publish_door(door);
+  }
+  else
+  {
+    LOG(LL_DEBUG, ("interrupt debounced pin %d", pin));
+  }
+  door->debounce = interrupt_millis;
 }
 
 /*
@@ -297,37 +312,30 @@ static void enable_ap(void)
 }
 */
 
-enum mgos_app_init_result mgos_app_init(void) {
+enum mgos_app_init_result mgos_app_init(void)
+{
   LOG(LL_INFO, ("Startup %s", __FILE__));
-  int doorCount = mgos_sys_config_get_garage_door_count();
-  #if 0
-  if (doorCount > 0) {
-    mgos_gpio_setup_output(mgos_sys_config_get_garage_door_a_pin_activate(), true);
-    mgos_gpio_set_pull(mgos_sys_config_get_garage_door_a_pin_activate(), MGOS_GPIO_PULL_UP);
-  }
-  if (doorCount > 1) {
-    mgos_gpio_setup_output(mgos_sys_config_get_garage_door_b_pin_activate(), true);
-    mgos_gpio_set_pull(mgos_sys_config_get_garage_door_b_pin_activate(), MGOS_GPIO_PULL_UP);
-  }
-  #endif
 
+  int i;
   Device *device = new Device();
 
   char *uri = NULL;
   char handler_nm[32];
   memset(handler_nm, 0, sizeof(handler_nm));
-  for (int i=0; i < doorCount; i++) {
-    Door *door = device->getDoorAt(i);
+  i = 0;
+  for (auto door : device->getDoors())
+  {
     asprintf(&uri, "door%c.activate", ('a' + i));
-    //snprintf(handler_nm, "door%c.%s", ('a' + i), "activate");
+    // snprintf(handler_nm, "door%c.%s", ('a' + i), "activate");
     mg_rpc_add_handler(mgos_rpc_get_global(), uri, NULL, activate_cb, door);
 
     asprintf(&uri, "door%c.read", ('a' + i));
-    //snprintf(handler_nm, "door%c.%s", ('a' + i), "read");
+    // snprintf(handler_nm, "door%c.%s", ('a' + i), "read");
     mg_rpc_add_handler(mgos_rpc_get_global(), uri, NULL, door_read_cb, door);
 
     mgos_gpio_enable_int(door->getContactPin());
     mgos_gpio_set_int_handler(door->getContactPin(), MGOS_GPIO_INT_EDGE_ANY, int_door_contact_cb, door);
+    i++;
   }
 
   mg_rpc_add_handler(mgos_rpc_get_global(), "door.count", NULL, door_count_cb, NULL);
@@ -336,18 +344,21 @@ enum mgos_app_init_result mgos_app_init(void) {
   mg_rpc_add_handler(mgos_rpc_get_global(), "tempf.read", NULL, tempf_cb, device);
 
   mgos_set_timer(60000, 1, repeat_cb, device);
-  mgos_set_timer(15000, 0, get_sys_ip, device);
+  auto msgList = device->homieDevice->introduce();
+  auto pair = new std::pair<
+      std::list<homie::Message>::iterator,
+      std::list<homie::Message>::iterator>;
+  pair->first = msgList.begin();
+  pair->second = msgList.end();
+  mgos_set_timer(200, 1, introduce_cb, pair);
 
-  std::list<int> l = { 3,1,3,3,7 };
-  for (int n : l) {
-    std::cout << "num: " << n << std::endl;
-    LOG(LL_DEBUG, ("n: %d", n));
+#ifdef HAS_MAX_QOS
+  if (mgos_sys_config_get_mqtt_enable())
+  {
+    // in case server is weird and doesn't allow normal range of MQTT QoS
+    mgos_mqtt_set_max_qos(mgos_sys_config_get_mqtt_maxqos());
   }
+#endif
 
-  auto ai = std::make_shared<int>();
-  *ai = 31337;
-  std::cout << "shared ptr deref: " << *ai << std::endl;
-
-  test_homie();
   return MGOS_APP_INIT_SUCCESS;
 }

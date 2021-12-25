@@ -23,7 +23,7 @@ filesystem:
 # Uncomment and modify according to your needs:
 
 config_schema:
-  - ["project.name", "s", "garage", {title: "Project Name"}]
+  - ["project.name", "s", "garage", {title: "Garage Controller"}]
   - ["time.debounce_millis", "i",  500, { title: "Time interval during which repeated interrupts may be ignored"}]
   - ["garage", "o", {title: "My app custom settings"}]
   - ["garage.name", "s", "My Garage", {title: "Name of Garage"}]
@@ -44,6 +44,7 @@ config_schema:
   - ["mqtt.will_message", "s",  "lost", { title: "MQTT LWT message prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_retain", "b",  true, { title: "MQTT LWT retention flag"} ]
   - ["mqtt.enable", "b",  true, { title: "MQTT enabled"} ]
+  - ["mqtt.maxqos", "i",  2, { title: "Maximum QoS supported by the server"} ]
   - ["mqtt.max_unsent", "i",  35, { title: "Max unsent bytes before sending again"}]
   - ["homie.pubinterval", "i",  200, { title: "Millis to wait before sending another home cfg msg"}]
   - ["rpc.mqtt.enable", "b",  true, { title: "MQTT RPC enabled"} ]
