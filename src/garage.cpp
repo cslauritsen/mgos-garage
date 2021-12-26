@@ -3,8 +3,6 @@
 namespace garage
 {
 
-
-
     Device::Device()
     {
         std::string projectName = std::string(mgos_sys_config_get_project_name());
@@ -17,14 +15,23 @@ namespace garage
 
         // homie (or mqtt?) says that topic elements must be lower-case
         // do this incase the configurator doesnt know this
-        std::transform(this->deviceId.begin(), this->deviceId.end(), this->deviceId.begin(),
-                       [](unsigned char c)
-                       { return std::tolower(c); });
+        std::transform(
+            this->deviceId.begin(),
+            this->deviceId.end(),
+            this->deviceId.begin(),
+            [](unsigned char c)
+            { return std::tolower(c); });
 
         // Homie setup
         std::string ip;  // cannot get this until device has fully configured, which is not now
         std::string mac; // cannot get this until device has fully configured, which is not now
-        homieDevice = new homie::Device(this->deviceId, std::string(build_version), std::string(mgos_sys_config_get_project_name()), ip, mac);
+
+        homieDevice = new homie::Device(
+            this->deviceId,
+            std::string(build_version),
+            std::string(mgos_sys_config_get_project_name()),
+            ip,
+            mac);
 
         memset(this->current_time, 0, sizeof(this->current_time));
         this->dhPin = mgos_sys_config_get_garage_dht_pin();
