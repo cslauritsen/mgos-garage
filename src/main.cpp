@@ -31,6 +31,57 @@
 
 using namespace garage;
 
+static void network_config_rpc_cb(struct mg_rpc *c, void *cb_arg, struct mg_rpc_frame_info *fi, struct mg_str result, int error_code, struct mg_str error_msg)
+{
+  Device *device = (Device *)cb_arg;
+  LOG(LL_INFO, ("error code: %d", error_code));
+  char *ip = NULL;
+  char *mac = NULL;
+  char *id = NULL;
+  int scan_result = json_scanf(result.p, result.len, "{id: %Q, mac: %Q, wifi: {sta_ip: %Q}}", &id, &mac, &ip);
+
+  if (id)
+  {
+    LOG(LL_DEBUG, ("id: %s", id));
+    free(id);
+  }
+  LOG(LL_DEBUG, ("jsonf_scan result: %d", scan_result));
+  if (scan_result < 0)
+  {
+    LOG(LL_ERROR, ("json scanf error"));
+  }
+  else if (0 == scan_result)
+  {
+    LOG(LL_ERROR, ("json scanf keys not found"));
+  }
+  else
+  {
+    if (ip)
+    {
+      LOG(LL_INFO, ("ip: %s", ip));
+      std::string str = std::string(ip);
+      device->setIpAddr(str);
+      device->homieDevice->setLocalIp(str);
+      free(ip);
+    }
+    else
+    {
+      LOG(LL_ERROR, ("json_scanf failed to find ip address"));
+    }
+    if (mac)
+    {
+      LOG(LL_INFO, ("mac: %s", mac));
+      std::string str = std::string(mac);
+      device->homieDevice->setMac(str);
+      free(mac);
+    }
+    else
+    {
+      LOG(LL_ERROR, ("json_scanf failed to find mac address"));
+    }
+  }
+}
+
 static void activate_sub_handler(struct mg_connection *nc, const char *topic,
                                  int topic_len, const char *msg, int msg_len,
                                  void *ud)
@@ -120,6 +171,7 @@ static void introduce_cb(void *arg)
   auto pair = (std::pair<std::vector<homie::Message> *, int> *)arg;
   auto vect = *(pair->first);
   auto vectLen = (int)vect.size();
+  LOG(LL_DEBUG, ("vectLen=%d", vectLen));
   if (pair->second < vectLen)
   {
     LOG(LL_DEBUG, ("about to publish qos=%d, retain=%d", qos, retain));
@@ -163,6 +215,11 @@ static void repeat_cb(void *arg)
     int qos = 1;
     bool retain = true;
     std::string topic;
+
+    device->homieDevice->setLifecycleState(homie::READY);
+    auto lcsMsg = device->homieDevice->getLifecycleMsg();
+
+    mgos_mqtt_pub(lcsMsg.topic.c_str(), lcsMsg.payload.c_str(), lcsMsg.payload.length(), qos, retain);
 
     // DHT Temp
     f = device->tempf();
@@ -284,6 +341,31 @@ static void enable_ap(void)
 }
 */
 
+static void sys_ready_cb(int ev, void *ev_data, void *userdata)
+{
+  LOG(LL_INFO, ("Got system event %d", ev));
+  Device *device = (Device *)userdata;
+
+  static int callCount = 1;
+  if (device->homieDevice && device->homieDevice->getLocalIp().length() == 0)
+  {
+    LOG(LL_DEBUG, ("Inquiring network config %d", callCount));
+    struct mg_rpc_call_opts opts = {.dst = mg_mk_str(MGOS_RPC_LOOPBACK_ADDR)};
+    mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("Sys.GetInfo"), network_config_rpc_cb, device, &opts, NULL);
+    callCount++;
+  }
+
+  device->homieDevice->setLifecycleState(homie::READY);
+  auto msgList = device->homieDevice->introduce();
+  auto pair = new std::pair<std::vector<homie::Message> *, int>;
+  pair->first = new std::vector<homie::Message>(msgList.begin(), msgList.end());
+  pair->second = 0;
+  introduce_timer_id = mgos_set_timer(300, 1, introduce_cb, pair);
+
+  (void)ev;
+  (void)ev_data;
+}
+
 enum mgos_app_init_result mgos_app_init(void)
 {
   LOG(LL_INFO, ("Startup %s", __FILE__));
@@ -317,11 +399,8 @@ enum mgos_app_init_result mgos_app_init(void)
 
   mgos_set_timer(60000, 1, repeat_cb, device);
 
-  auto msgList = device->homieDevice->introduce();
-  auto pair = new std::pair<std::vector<homie::Message> *, int>;
-  pair->first = new std::vector<homie::Message>(msgList.begin(), msgList.end());
-  pair->second = 0;
-  introduce_timer_id = mgos_set_timer(200, 1, introduce_cb, pair);
+  // Register callback when sys init is complete
+  mgos_event_add_handler(MGOS_EVENT_INIT_DONE, sys_ready_cb, device);
 
 #ifdef HAS_MAX_QOS
   if (mgos_sys_config_get_mqtt_enable())

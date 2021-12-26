@@ -40,12 +40,13 @@ config_schema:
   - ["garage.mqttPubInterval", "i", 60, {title: "How many seconds between MQTT publications"}]
   - ["garage.door_activate_millis", "i",  500, { title: "Milliseconds to leave door relay activated"}]
   - ["mqtt.server", "s",  "192.168.1.5", { title: "MQTT Server"} ]
-  - ["mqtt.will_topic", "s",  "homie/${device.id}/$state", { title: "MQTT LWT message topic prescribed by Homie 4.0 spec"} ]
+  - ["mqtt.will_topic", "s",  "homie/garage-128cca/$state", { title: "MQTT LWT message topic prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_message", "s",  "lost", { title: "MQTT LWT message prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_retain", "b",  true, { title: "MQTT LWT retention flag"} ]
   - ["mqtt.enable", "b",  true, { title: "MQTT enabled"} ]
+  - ["mqtt.max_queue_length", "i", 35, {title: "Maximum queue length for buffering QoS 1+ messages. 0 to disable queue."}]
   - ["mqtt.maxqos", "i",  2, { title: "Maximum QoS supported by the server"} ]
-  - ["mqtt.max_unsent", "i",  35, { title: "Max unsent bytes before sending again"}]
+  - ["mqtt.max_unsent", "i",  512, { title: "Max unsent bytes before sending again"}]
   - ["homie.pubinterval", "i",  200, { title: "Millis to wait before sending another home cfg msg"}]
   - ["rpc.mqtt.enable", "b",  true, { title: "MQTT RPC enabled"} ]
   - ["debug.udp_log_addr", "s",  "192.168.1.5:31339", { title: "UDP log target"} ]
@@ -95,6 +96,8 @@ libs:
   - origin: https://github.com/mongoose-os-libs/sntp
   - origin: https://github.com/mongoose-os-libs/rpc-loopback
   - origin: https://github.com/cslauritsen/cslhomie
+    version: master
+
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
 manifest_version: 2017-09-29

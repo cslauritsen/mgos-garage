@@ -3,69 +3,7 @@
 namespace garage
 {
 
-    static void network_config_rpc_cb(struct mg_rpc *c, void *cb_arg, struct mg_rpc_frame_info *fi, struct mg_str result, int error_code, struct mg_str error_msg)
-    {
-        Device *device = (Device *)cb_arg;
-        LOG(LL_INFO, ("error code: %d", error_code));
-        char *ip = NULL;
-        char *mac = NULL;
-        char *id = NULL;
-        int scan_result = json_scanf(result.p, result.len, "{id: %Q, mac: %Q, wifi: {sta_ip: %Q}}", &id, &mac, &ip);
 
-        if (id)
-        {
-            LOG(LL_DEBUG, ("id: %s", id));
-            free(id);
-        }
-        LOG(LL_DEBUG, ("jsonf_scan result: %d", scan_result));
-        if (scan_result < 0)
-        {
-            LOG(LL_ERROR, ("json scanf error"));
-        }
-        else if (0 == scan_result)
-        {
-            LOG(LL_ERROR, ("json scanf keys not found"));
-        }
-        else
-        {
-            if (ip)
-            {
-                LOG(LL_INFO, ("ip: %s", ip));
-                std::string str = std::string(ip);
-                device->setIpAddr(str);
-                device->homieDevice->setLocalIp(str);
-                free(ip);
-            }
-            else
-            {
-                LOG(LL_ERROR, ("json_scanf failed to find ip address"));
-            }
-            if (mac)
-            {
-                LOG(LL_INFO, ("mac: %s", mac));
-                std::string str = std::string(mac);
-                device->homieDevice->setMac(str);
-                free(mac);
-            }
-            else
-            {
-                LOG(LL_ERROR, ("json_scanf failed to find mac address"));
-            }
-        }
-    }
-
-    static void network_config_timer_cb(void *cb_arg)
-    {
-        Device *device = (Device *)cb_arg;
-        static int callCount = 1;
-        if (device->homieDevice && device->homieDevice->getLocalIp().length() == 0)
-        {
-            LOG(LL_DEBUG, ("Inquiring network config %d", callCount));
-            struct mg_rpc_call_opts opts = {.dst = mg_mk_str(MGOS_RPC_LOOPBACK_ADDR)};
-            mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("Sys.GetInfo"), network_config_rpc_cb, cb_arg, &opts, NULL);
-            callCount++;
-        }
-    }
 
     Device::Device()
     {
@@ -87,8 +25,6 @@ namespace garage
         std::string ip;  // cannot get this until device has fully configured, which is not now
         std::string mac; // cannot get this until device has fully configured, which is not now
         homieDevice = new homie::Device(this->deviceId, std::string(build_version), std::string(mgos_sys_config_get_project_name()), ip, mac);
-        // Defer until later to collect IP & Mac addr
-        mgos_set_timer(15000, 1, network_config_timer_cb, this);
 
         memset(this->current_time, 0, sizeof(this->current_time));
         this->dhPin = mgos_sys_config_get_garage_dht_pin();
@@ -104,12 +40,17 @@ namespace garage
             LOG(LL_INFO, ("Dht failed to connect on pin %d", this->dhPin));
         }
         auto dhtNode = new homie::Node(this->homieDevice, DHT_NODE_NM, "Temperature/Humidity Sensor", "DHT22");
+
         auto tempFProp = new homie::Property(dhtNode, DHT_PROP_TEMPF, "Temperature in Fahrenheit", homie::FLOAT, false);
         dhtNode->addProperty(tempFProp);
         tempFProp->setValue((float)72.0);
+        tempFProp->setUnit(homie::DEGREE_SYMBOL + "F");
+
         auto rhProp = new homie::Property(dhtNode, DHT_PROP_RH, "Relative Humidity", homie::FLOAT, false);
         rhProp->setValue((float)50);
+        rhProp->setUnit("%");
         dhtNode->addProperty(rhProp);
+
         this->homieDhtNode = dhtNode;
         this->homieDevice->addNode(dhtNode);
 
@@ -129,9 +70,11 @@ namespace garage
             auto doorNode = new homie::Node(this->homieDevice, door->getOrdinalName(), door->getName(), "GarageDoor");
             homieDevice->addNode(doorNode);
             auto relayProp = new homie::Property(doorNode, DOOR_ACTIVATE_PROP, "Activation Relay", homie::INTEGER, true);
+            relayProp->setValue(0);
             doorNode->addProperty(relayProp);
             auto contactProp = new homie::Property(doorNode, "contact", "Open/Closed Reed Switch", homie::ENUM, false);
             contactProp->setFormat("open,closed,unknown");
+            contactProp->setValue(std::string("unknown"));
             doorNode->addProperty(contactProp);
             door->homieNode = doorNode;
         }
@@ -149,9 +92,11 @@ namespace garage
             auto doorNode = new homie::Node(this->homieDevice, door->getOrdinalName(), door->getName(), "GarageDoor");
             homieDevice->addNode(doorNode);
             auto relayProp = new homie::Property(doorNode, DOOR_ACTIVATE_PROP, "Activation Relay", homie::INTEGER, true);
+            relayProp->setValue(0);
             doorNode->addProperty(relayProp);
             auto contactProp = new homie::Property(doorNode, DOOR_CONTACT_PROP, "Open/Closed Reed Switch", homie::ENUM, false);
             contactProp->setFormat("open,closed,unknown");
+            contactProp->setValue(std::string("unknown"));
             doorNode->addProperty(contactProp);
             door->homieNode = doorNode;
         }
