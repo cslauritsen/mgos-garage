@@ -16,7 +16,7 @@ Door A Closed Contact | D2         | GPIO4
 Door A Activation     | D4         | GPIO2
 Door B Activation     | ??         | ??
 
-In this case, I'm using GPIO 4 to control the south door relay.
+In this case, I'm using GPIO 2 to control the south door relay.
 
 ## DHT22 Sensor
 The DHT22 is a low-cost temperature and humidity sensor. Although the DHT22 sensor comes with 4 pins, only 3 are connected:

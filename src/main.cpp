@@ -181,6 +181,7 @@ static void introduce_cb(void *arg)
     auto unsent = mgos_mqtt_num_unsent_bytes();
     auto maxUnsent = static_cast<size_t>(mgos_sys_config_get_mqtt_max_unsent());
     auto res = mgos_mqtt_pub(msg.topic.c_str(), msg.payload.c_str(), msg.payload.length(), qos, retain);
+    LOG(LL_DEBUG, ("pub res: %d", res));
     if (unsent >= maxUnsent)
     {
       LOG(LL_WARN, ("MQTT buffer too full %d > %d", unsent, maxUnsent));

@@ -27,7 +27,7 @@ namespace garage
         std::string mac; // cannot get this until device has fully configured, which is not now
 
         homieDevice = new homie::Device(
-            this->deviceId,
+            std::string(mgos_sys_config_get_project_name()),
             std::string(build_version),
             std::string(mgos_sys_config_get_project_name()),
             ip,
@@ -232,6 +232,11 @@ namespace garage
 
     void Door::activate(void)
     {
+        if (this->activateRelayPin < 0)
+        {
+            LOG(LL_WARN, ("Invalid activate pin: %d", this->activateRelayPin));
+            return;
+        }
         mgos_gpio_write(this->activateRelayPin, RELAY_STATE_ACTIVE);
         // async call to the future
         mgos_set_timer(mgos_sys_config_get_garage_door_activate_millis(), 0, _deactivate_cb, this);
