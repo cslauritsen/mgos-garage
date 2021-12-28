@@ -1,0 +1,13 @@
+
+config_schema:
+  - ["garage", "o", {title: "My app custom settings"}]
+  - ["garage.name", "s", "Lauritsen Garage", {title: "Name of Garage"}]
+  - ["garage.door_count", "i",  2, { title: "Number of Doors connected"} ]
+  - ["garage.door.a.name", "s",  "South Door", { title: "Human-friendly name of door 0"} ]
+  - ["garage.door.a.pin.contact", "i",  13, { title: "Digital GPIO PIN for door closed contact LOW=active"} ]
+  - ["garage.door.a.pin.activate", "i", 4, { title: "Digital GPIO PIN for door activate relay, should out HI on boot, LO=active"} ]
+  - ["garage.door.b.name", "s",  "North Door", { title: "Human-friendly name of door 1"} ]
+  - ["garage.door.b.pin.contact", "i",  12, { title: "Digital GPIO PIN for door open contact LOW=active"} ]
+  - ["garage.door.b.pin.activate", "i",  -1, { title: "Digital GPIO PIN for door activate relay, should output LOW on boot, LOW=active"} ]
+
+  - ["garage.dht_pin", "i", 0, {title: "DHT GPIO Pin Number"}]
