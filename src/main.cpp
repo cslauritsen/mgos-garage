@@ -166,11 +166,18 @@ static mgos_timer_id introduce_timer_id;
 static void introduce_cb(void *arg)
 {
   static int qos = 1;
+  static int invocationCount = 0;
   static bool retain = true;
+  bool no_more = false;
 
   auto pair = (std::pair<std::vector<homie::Message> *, int> *)arg;
   auto vect = *(pair->first);
   auto vectLen = (int)vect.size();
+  if (invocationCount++ > vectLen * 2 ) {
+    LOG(LL_WARN, ("Giving up introduction attempts after %d tries", invocationCount));
+    no_more = true;
+  }
+
   LOG(LL_DEBUG, ("vectLen=%d", vectLen));
   if (pair->second < vectLen)
   {
@@ -195,12 +202,22 @@ static void introduce_cb(void *arg)
   }
   else
   {
-    // no reason to keep the timer running
+    no_more = true;
+  }
+
+  if (no_more) {
+    // prevent this fuction from being invoked again
     mgos_clear_timer(introduce_timer_id);
     // no reason to keep the vector allocated
-    delete pair->first;
+    if (pair->first) {
+      delete pair->first;
+      pair->first = NULL;
+    }
     // no reason to keep the pair allocated
-    delete pair;
+    if (pair) {
+      pair = NULL;
+      delete pair;
+    }
     LOG(LL_DEBUG, ("Cleared timer %d", introduce_timer_id));
   }
 }
@@ -346,6 +363,8 @@ static void sys_ready_cb(int ev, void *ev_data, void *userdata)
 {
   LOG(LL_INFO, ("Got system event %d", ev));
   Device *device = (Device *)userdata;
+
+  LOG(LL_DEBUG, ("will topic: %s", mgos_sys_config_get_mqtt_will_topic()));
 
   static int callCount = 1;
   if (device->homieDevice && device->homieDevice->getLocalIp().length() == 0)
