@@ -34,6 +34,8 @@ namespace garage
             mac);
 
         mgos_sys_config_set_mqtt_will_topic(homieDevice->getLifecycleTopic().c_str());
+        mgos_sys_config_set_mqtt_ssl_psk_identity(this->deviceId.c_str());
+        mgos_sys_config_set_mqtt_ssl_psk_key(homieDevice->getPsk().c_str());
 
         memset(this->current_time, 0, sizeof(this->current_time));
         this->dhPin = mgos_sys_config_get_garage_dht_pin();
@@ -122,6 +124,7 @@ namespace garage
             door->homieNode = doorNode;
             LOG(LL_DEBUG, ("Setup door %s (%d)", door->getName().c_str(), d));
         }
+
     }
 
     Device::~Device()

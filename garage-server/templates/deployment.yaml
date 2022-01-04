@@ -74,6 +74,9 @@ spec:
             - name: mqtt
               containerPort: 1883
               protocol: TCP
+            - name: mqtts
+              containerPort: 8083
+              protocol: TCP
 #         livenessProbe:
 #           httpGet:
 #             path: /

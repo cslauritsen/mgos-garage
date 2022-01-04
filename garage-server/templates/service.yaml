@@ -39,11 +39,11 @@ spec:
       targetPort: 1883
       protocol: TCP
       name: mqtt
-      nodePort: 31883
-    - port: 8883
-      targetPort: 8883
+      nodePort: {{ .Values.service.np.mqttPort }}
+    - port: 8083
+      targetPort: 8083
       protocol: TCP
       name: mqtts
-      nodePort: 31884
+      nodePort: {{ .Values.service.np.mqttsPort }}
   selector:
     {{- include "garage-server.selectorLabels" . | nindent 4 }}

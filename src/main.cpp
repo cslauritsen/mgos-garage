@@ -477,7 +477,7 @@ static void sys_ready_cb(int ev, void *ev_data, void *userdata)
   auto pair = new std::pair<std::vector<homie::Message> *, int>;
   pair->first = new std::vector<homie::Message>(msgList.begin(), msgList.end());
   pair->second = 0;
-  introduce_timer_id = mgos_set_timer(300, 1, homie_introduce_cb, pair);
+  introduce_timer_id = mgos_set_timer(mgos_sys_config_get_homie_pubinterval(), 1, homie_introduce_cb, pair);
 
   LOG(LL_DEBUG, ("last will topic: %s", mgos_sys_config_get_mqtt_will_topic()));
 

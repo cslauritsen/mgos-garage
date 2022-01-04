@@ -19,6 +19,8 @@ extern "C"
 #include <mg_rpc_channel_loopback.h>
 #include <mgos_dht.h>
 
+#include <mbedtls/sha512.h>
+
     // declared in build_info.c
     extern char *build_id;
     extern char *build_timestamp;
