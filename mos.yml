@@ -118,7 +118,6 @@ libs:
   - origin: https://github.com/mongoose-os-libs/rpc-loopback
   - origin: https://github.com/mongoose-os-libs/provision
   - origin: https://github.com/cslauritsen/cslhomie
-    version: "1.2.4"
 
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
