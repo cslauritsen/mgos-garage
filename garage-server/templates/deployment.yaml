@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "garage-server.fullname" . }}
+  labels:
+    {{- include "garage-server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "garage-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "garage-server.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "garage-server.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+      - name: {{ include "garage-server.fullname" . }}-persist-vol
+        emptyDir: {}
+      - name: {{ include "garage-server.fullname" . }}-config-vol
+        configMap:
+          name: {{ include "garage-server.fullname" . }}-conf
+      - name: {{ include "garage-server.fullname" . }}-html-vol
+        configMap:
+          name: {{ include "garage-server.fullname" . }}-html
+      - name: {{ include "garage-server.fullname" . }}-users-vol
+        secret:
+          secretName: mqtt-users
+      - name: {{ include "garage-server.fullname" . }}-tls-vol
+        secret:
+          secretName: {{ include "garage-server.fullname" . }}-letsencrypt-staging-tls
+      containers:
+        - name: {{ .Chart.Name }}-web
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: cslauritsen/homie-client:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /homie/index.html
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /homie/index.html
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        - name: {{ .Chart.Name }}-mqtt
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: ws
+              containerPort: 9001
+              protocol: TCP
+            - name: mqtt
+              containerPort: 1883
+              protocol: TCP
+#         livenessProbe:
+#           httpGet:
+#             path: /
+#             port: ws
+#         readinessProbe:
+#           httpGet:
+#             path: /
+#             port: ws
+          volumeMounts:
+            - name: {{ include "garage-server.fullname" . }}-persist-vol
+              mountPath: /mosquitto/persist
+            - name: {{ include "garage-server.fullname" . }}-config-vol
+              mountPath: /mosquitto/config
+            - name: {{ include "garage-server.fullname" . }}-html-vol
+              mountPath: /mosquitto/html
+            - name: {{ include "garage-server.fullname" . }}-users-vol
+              mountPath: /mosquitto/secrets
+            - name: {{ include "garage-server.fullname" . }}-tls-vol
+              mountPath: /mosquitto/tls
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

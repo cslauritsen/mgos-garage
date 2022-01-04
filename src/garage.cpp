@@ -13,7 +13,6 @@ namespace garage
         this->deviceId += "-";
         this->deviceId += std::string(suffix);
 
-
         // homie (or mqtt?) says that topic elements must be lower-case
         // do this incase the configurator doesnt know this
         std::transform(
@@ -52,69 +51,76 @@ namespace garage
         auto dhtNode = new homie::Node(this->homieDevice, DHT_NODE_NM, "Temperature/Humidity Sensor", "DHT22");
 
         auto tempFProp = new homie::Property(dhtNode, DHT_PROP_TEMPF, "Temperature in Fahrenheit", homie::FLOAT, false);
-        dhtNode->addProperty(tempFProp);
-        tempFProp->setValue((float)72.0);
+        tempFProp->setValue(this->tempf());
         tempFProp->setUnit(homie::DEGREE_SYMBOL + "F");
+        dhtNode->addProperty(tempFProp);
 
         auto rhProp = new homie::Property(dhtNode, DHT_PROP_RH, "Relative Humidity", homie::FLOAT, false);
-        rhProp->setValue((float)50);
         rhProp->setUnit("%");
         dhtNode->addProperty(rhProp);
+
+        // might take a little time for the DHT22 to return real values
+        for (int i = 0; i < 30; i++)
+        {
+            float rh = this->rh();
+            float tempf = this->tempf();
+            if (isnan(rh) || isnan(tempf))
+            {
+                LOG(LL_DEBUG, ("Dht ret NaN, retrying %d", i));
+                mgos_msleep(100);
+            }
+            else
+            {
+                rhProp->setValue(rh);
+                tempFProp->setValue(tempf);
+                break;
+            }
+        }
 
         this->homieDhtNode = dhtNode;
         this->homieDevice->addNode(dhtNode);
 
         this->doorCount = mgos_sys_config_get_garage_door_count();
-        int doorIx = -1;
 
-        if (doorCount > 0)
+        for (int d = 0; d < doorCount; d++)
         {
-            doorIx++;
-            auto door = new Door(
-                mgos_sys_config_get_garage_door_a_name(),
-                mgos_sys_config_get_garage_door_a_pin_contact(),
-                mgos_sys_config_get_garage_door_a_pin_activate(),
-                doorIx);
+            Door *door = NULL;
+            if (d == 0)
+            {
+                door = new Door(
+                    mgos_sys_config_get_garage_door_a_name(),
+                    mgos_sys_config_get_garage_door_a_pin_contact(),
+                    mgos_sys_config_get_garage_door_a_pin_activate(),
+                    d);
+            }
+            else if (d == 1)
+            {
+                door = new Door(
+                    mgos_sys_config_get_garage_door_b_name(),
+                    mgos_sys_config_get_garage_door_b_pin_contact(),
+                    mgos_sys_config_get_garage_door_b_pin_activate(),
+                    d);
+            }
             this->doors.push_back(door);
 
             auto doorNode = new homie::Node(this->homieDevice, door->getOrdinalName(), door->getName(), "GarageDoor");
             homieDevice->addNode(doorNode);
-            auto relayProp = new homie::Property(doorNode, DOOR_ACTIVATE_PROP, "Activation Relay", homie::INTEGER, true);
-            relayProp->setValue(0);
-            doorNode->addProperty(relayProp);
-            auto contactProp = new homie::Property(doorNode, "contact", "Open/Closed Reed Switch", homie::ENUM, false);
-            contactProp->setFormat("open,closed,unknown");
-            contactProp->setValue(std::string("unknown"));
-            doorNode->addProperty(contactProp);
+
+            if (door->getActivateRelayPin() >= 0)
+            {
+                auto relayProp = new homie::Property(doorNode, DOOR_ACTIVATE_PROP, "Activation Button", homie::BOOLEAN, true);
+                relayProp->setValue(0);
+                doorNode->addProperty(relayProp);
+            }
+            if (door->getContactPin() >= 0)
+            {
+                auto contactProp = new homie::Property(doorNode, DOOR_CONTACT_PROP, "Is Door Open?", homie::BOOLEAN, false);
+                // contactProp->setFormat("open,closed,unknown"); // for use with homie::ENUM
+                contactProp->setValue(kOpen == door->getStatus() ? std::string("true") : std::string("false"));
+                doorNode->addProperty(contactProp);
+            }
             door->homieNode = doorNode;
-        }
-
-        if (doorCount > 1)
-        {
-            doorIx++;
-            auto door = new Door(
-                mgos_sys_config_get_garage_door_b_name(),
-                mgos_sys_config_get_garage_door_b_pin_contact(),
-                mgos_sys_config_get_garage_door_b_pin_activate(),
-                doorIx);
-            this->doors.push_back(door);
-
-            auto doorNode = new homie::Node(this->homieDevice, door->getOrdinalName(), door->getName(), "GarageDoor");
-            homieDevice->addNode(doorNode);
-            auto relayProp = new homie::Property(doorNode, DOOR_ACTIVATE_PROP, "Activation Relay", homie::INTEGER, true);
-            relayProp->setValue(0);
-            doorNode->addProperty(relayProp);
-            auto contactProp = new homie::Property(doorNode, DOOR_CONTACT_PROP, "Open/Closed Reed Switch", homie::ENUM, false);
-            contactProp->setFormat("open,closed,unknown");
-            contactProp->setValue(std::string("unknown"));
-            doorNode->addProperty(contactProp);
-            door->homieNode = doorNode;
-        }
-
-        int i = 0;
-        for (auto d : doors)
-        {
-            LOG(LL_DEBUG, ("Setup door %s (%d)", d->getName().c_str(), i++));
+            LOG(LL_DEBUG, ("Setup door %s (%d)", door->getName().c_str(), d));
         }
     }
 
@@ -139,14 +145,25 @@ namespace garage
 
     float Device::tempf()
     {
+        float celsius = this->tempc();
+        if (isnan(celsius))
+        {
+            LOG(LL_ERROR, ("tempc read returned NaN"));
+            return celsius;
+        }
+        return celsius * (9.0 / 5.0) + 32.0;
+    }
+
+    float Device::tempc()
+    {
         float celsius = mgos_dht_get_temp(this->dht);
         if (isnan(celsius))
         {
-            LOG(LL_ERROR, ("temp read returned NaN"));
+            LOG(LL_ERROR, ("degC NaN"));
             return celsius;
         }
-        LOG(LL_DEBUG, ("temp read deC %2.1f", celsius));
-        return celsius * (9.0 / 5.0) + 32.0;
+        LOG(LL_DEBUG, ("degC %2.1f", celsius));
+        return celsius;
     }
 
     std::string Device::currentTime()

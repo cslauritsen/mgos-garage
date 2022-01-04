@@ -1,0 +1,23 @@
+{{- if .Values.loadBalancer.enabled -}}
+{{- $fullName := include "garage-server.fullname" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}-loadbalancer
+  annotations:
+    metallb.universe.tf/allow-shared-ip: {{ .Values.loadBalancer.ip | quote }}
+  {{- range $i, $e := .Chart.Sources }}
+    github-url-{{ $i }}: {{ $e }}
+  {{- end }}
+spec:
+  selector:
+    app: garage-server
+  ports:
+    - protocol: TCP
+      port: {{ .Values.loadBalancer.port }}
+      targetPort: 1883
+      name: mqtt
+  type: LoadBalancer
+  loadBalancerIP: {{ .Values.loadBalancer.ip | quote }}
+
+  {{- end }}

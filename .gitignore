@@ -6,3 +6,5 @@ delme*
 rpc/
 .*.swp
 .*.swo
+
+config-set.sh

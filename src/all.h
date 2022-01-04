@@ -43,6 +43,6 @@ extern "C"
 
 #define DHT_NODE_NM "dht22"
 #define DHT_PROP_TEMPF "tempf"
-#define DHT_PROP_RH    "tempf"
+#define DHT_PROP_RH    "rh"
 #define DOOR_ACTIVATE_PROP    "activate"
-#define DOOR_CONTACT_PROP    "contact"
+#define DOOR_CONTACT_PROP    "isopen"

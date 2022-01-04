@@ -2,9 +2,9 @@ author: mongoose-os
 description: A Mongoose OS app skeleton
 version: 1.2.7
 
-libs_version: ${mos.version}
-modules_version: ${mos.version}
-mongoose_os_version: ${mos.version}
+libs_version: 2.19.0 # ${mos.version}
+modules_version: 2.19.0 # ${mos.version}
+mongoose_os_version: 2.19.0 # ${mos.version}
 
 # Optional. List of tags for online search.
 tags:
@@ -39,17 +39,19 @@ config_schema:
 
   - ["garage.mqttPubInterval", "i", 60, {title: "How many seconds between MQTT publications"}]
   - ["garage.door_activate_millis", "i",  500, { title: "Milliseconds to leave door relay activated"}]
-  - ["mqtt.server", "s",  "192.168.1.5", { title: "MQTT Server"} ]
-  - ["mqtt.will_topic", "s",  "homie/garage-${device.id}/$state", { title: "MQTT LWT message topic prescribed by Homie 4.0 spec"} ]
+  - ["mqtt.server", "s",  "mqtt.justsotech.com:31883", { title: "MQTT Server"} ]
+  - ["mqtt.will_topic", "s",  "homie/garage-${device.id}/$state", { title: "Updated at runtime by app"} ]
   - ["mqtt.will_message", "s",  "lost", { title: "MQTT LWT message prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_retain", "b",  true, { title: "MQTT LWT retention flag"} ]
   - ["mqtt.enable", "b",  true, { title: "MQTT enabled"} ]
   - ["mqtt.max_queue_length", "i", 35, {title: "Maximum queue length for buffering QoS 1+ messages. 0 to disable queue."}]
   - ["mqtt.maxqos", "i",  2, { title: "Maximum QoS supported by the server"} ]
   - ["mqtt.max_unsent", "i",  512, { title: "Max unsent bytes before sending again"}]
+# having trouble with this
+#  - ["mqtt.ssl_ca_cert", "s",  "/ca.pem", { title: "CA Certificates for SSL" }]
   - ["homie.pubinterval", "i",  200, { title: "Millis to wait before sending another home cfg msg"}]
   - ["rpc.mqtt.enable", "b",  true, { title: "MQTT RPC enabled"} ]
-  - ["debug.udp_log_addr", "s",  "192.168.1.5:31339", { title: "UDP log target"} ]
+# - ["debug.udp_log_addr", "s",  "192.168.1.5:31339", { title: "UDP log target"} ]
   - ["debug.level", 3]
 
 # The following values allow the device to know when sunrise and sunset are
@@ -57,6 +59,18 @@ config_schema:
   - ["device.location.lat", 41.45944444444445 ]
   - ["device.location.lon", -81.55527777777777 ]
 
+# Reset to factory defaults is done by configuring a reset button, attached to a certain GPIO pin. Two modes are possible:
+#  * Hold the reset button and reboot the device while holding a button. 
+#    For this, set provision.btn.pin to a non-negative value, and 
+#    set provision.btn.hold_ms to 0.
+#  * Just hold the reset button pressed for a long time. 
+#    For this, set provision.btn.pin to a non-negative value, and 
+#    set provision.btn.hold_ms to a positive value, e.g. 5000 - 5 seconds. 
+#    If you also set provision.btn.inhibit_after_s value to non-zero number of seconds, 
+#    reset button will be inhibited once uptime reaches this value (reset button will stop working N seconds after boot).
+  - ["provision.btn.pin", 5 ]
+  - ["provision.btn.hold_ms", 5000 ]
+  - ["provision.btn.pull_up", true ]
 
 # These settings get compiled into the C structure, and can be accessed
 # from the C code this way:
@@ -95,8 +109,9 @@ libs:
   - origin: https://github.com/mongoose-os-libs/wifi-setup-web-ui
   - origin: https://github.com/mongoose-os-libs/sntp
   - origin: https://github.com/mongoose-os-libs/rpc-loopback
+  - origin: https://github.com/mongoose-os-libs/provision
   - origin: https://github.com/cslauritsen/cslhomie
-    version: master
+    version: "1.1.0"
 
 
 # Used by the mos tool to catch mos binaries incompatible with this file format

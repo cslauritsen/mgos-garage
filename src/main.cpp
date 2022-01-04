@@ -147,12 +147,13 @@ static void publish_door(void *arg)
   {
     int qos = 1;
     bool retain = true;
+
     Door *door = (Door *)arg;
     auto statusProp = door->homieNode->getProperty(DOOR_CONTACT_PROP);
     if (statusProp != nullptr)
     {
-      statusProp->setValue(door->getStatusString());
-      auto payload = door->getStatusString();
+      statusProp->setValue(kOpen == door->getStatus());
+      auto payload = std::string(kOpen == door->getStatus() ? "true" : "false"); // door->getStatusString();
       auto res = mgos_mqtt_pub(statusProp->getPubTopic().c_str(), payload.c_str(), (size_t)payload.length(), qos, retain);
       LOG(LL_DEBUG, ("%s pub %s %d", door->getOrdinalName().c_str(), payload.c_str(), res));
     }
@@ -162,7 +163,8 @@ static void publish_door(void *arg)
     }
   }
 }
-static mgos_timer_id introduce_timer_id;
+
+static mgos_timer_id introduce_timer_id = MGOS_INVALID_TIMER_ID;
 static void homie_introduce_cb(void *arg)
 {
   static int qos = 1;
@@ -209,7 +211,12 @@ static void homie_introduce_cb(void *arg)
   if (!enabled)
   {
     // prevent this fuction from being invoked again
-    mgos_clear_timer(introduce_timer_id);
+    if (MGOS_INVALID_TIMER_ID != introduce_timer_id)
+    {
+      mgos_clear_timer(introduce_timer_id);
+      LOG(LL_DEBUG, ("Cleared timer %d", introduce_timer_id));
+      introduce_timer_id = MGOS_INVALID_TIMER_ID;
+    }
     // no reason to keep the vector allocated
     if (pair->first)
     {
@@ -222,7 +229,84 @@ static void homie_introduce_cb(void *arg)
       pair = NULL;
       delete pair;
     }
-    LOG(LL_DEBUG, ("Cleared timer %d", introduce_timer_id));
+  }
+}
+
+static void publish_ip(Device *device)
+{
+  int qos = 1;
+  bool retain = true;
+  auto topic = device->homieDevice->getTopicBase();
+  auto newIp = device->homieDevice->getLocalIp();
+  topic += "$localip";
+  LOG(LL_DEBUG, ("ip pub %s: %s", topic.c_str(), newIp.c_str()));
+  mgos_mqtt_pub(topic.c_str(), newIp.c_str(), newIp.length(), qos, retain);
+}
+
+static void publish_mac(Device *device)
+{
+  int qos = 1;
+  bool retain = true;
+  auto topic = device->homieDevice->getTopicBase();
+  auto newMac = device->homieDevice->getMac();
+  topic += "$mac";
+  LOG(LL_DEBUG, ("mac pub %s: %s", topic.c_str(), newMac.c_str()));
+  mgos_mqtt_pub(topic.c_str(), newMac.c_str(), newMac.length(), qos, retain);
+}
+
+static void ip_rpc_cb(struct mg_rpc *c, void *cb_arg, struct mg_rpc_frame_info *fi, struct mg_str result, int error_code, struct mg_str error_msg)
+{
+  Device *device = (Device *)cb_arg;
+  auto currentIp = device->homieDevice->getLocalIp();
+  auto currentMac = device->homieDevice->getMac();
+  LOG(LL_INFO, ("error code: %d", error_code));
+  char *ip = NULL;
+  char *mac = NULL;
+  int scan_result = json_scanf(result.p, result.len, "{mac: %Q, wifi: {sta_ip: %Q}}", &mac, &ip);
+
+  LOG(LL_DEBUG, ("jsonf_scan result: %d", scan_result));
+  if (scan_result < 0)
+  {
+    LOG(LL_ERROR, ("json scanf error"));
+  }
+  else if (0 == scan_result)
+  {
+    LOG(LL_ERROR, ("json scanf keys not found"));
+  }
+  else
+  {
+    if (ip)
+    {
+      LOG(LL_INFO, ("ip: %s", ip));
+      std::string str = std::string(ip);
+      device->setIpAddr(str);
+      device->homieDevice->setLocalIp(str);
+      free(ip);
+      if (str != currentIp)
+      {
+        publish_ip(device);
+      }
+    }
+    else
+    {
+      LOG(LL_ERROR, ("json_scanf failed to find ip address"));
+    }
+
+    if (mac)
+    {
+      LOG(LL_INFO, ("mac: %s", mac));
+      std::string str = std::string(mac);
+      device->homieDevice->setMac(str);
+      free(mac);
+      if (str != currentMac)
+      {
+        publish_mac(device);
+      }
+    }
+    else
+    {
+      LOG(LL_ERROR, ("json_scanf failed to find ip address"));
+    }
   }
 }
 
@@ -288,15 +372,26 @@ static void repeat_cb(void *arg)
         if (nullptr != prop)
         {
           mgos_mqtt_sub(prop->getSubTopic().c_str(), activate_sub_handler, door);
+          LOG(LL_INFO, ("Subscribed to %s", prop->getSubTopic().c_str()));
           door->subscribed = true;
-          LOG(LL_DEBUG, ("Publishing %s info", door->getOrdinalName().c_str()));
         }
         else
         {
           LOG(LL_ERROR, ("Door Node has no prop named %s", DOOR_ACTIVATE_PROP));
         }
       }
+      LOG(LL_DEBUG, ("Publishing %s info", door->getOrdinalName().c_str()));
       publish_door(door);
+    }
+
+    auto currentIp = device->homieDevice->getLocalIp();
+    LOG(LL_DEBUG, ("currentIp %s", currentIp.c_str()));
+    if (currentIp.length() < 7) // shortest possible IPv4 addr is 7 chars long
+    {
+      LOG(LL_DEBUG, ("Inquiring network ip"));
+      struct mg_rpc_call_opts opts = {.dst = mg_mk_str(MGOS_RPC_LOOPBACK_ADDR)};
+      auto newIp = device->homieDevice->getLocalIp();
+      mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("Sys.GetInfo"), ip_rpc_cb, device, &opts, NULL);
     }
   }
   else

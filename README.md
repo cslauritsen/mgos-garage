@@ -15,6 +15,7 @@ DHT22 Temp/RH         | D3         | GPIO0
 Door A Closed Contact | D2         | GPIO4
 Door A Activation     | D4         | GPIO2
 Door B Activation     | ??         | ??
+Factory Reset         | D0         | GPIO16
 
 In this case, I'm using GPIO 2 to control the south door relay.
 

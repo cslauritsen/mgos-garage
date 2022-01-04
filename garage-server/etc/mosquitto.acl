@@ -1,0 +1,11 @@
+topic read $SYS/#
+
+user mongoose
+topic readwrite homie/#
+
+user northrop
+topic readwrite homie/garage-128cca/#
+
+user lauritsen
+topic readwrite homie/garage-7e5e96/#
+

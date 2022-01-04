@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "garage-server.fullname" . }}
+  labels:
+    {{- include "garage-server.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: 1883
+      targetPort: 1883
+      protocol: TCP
+      name: mqtt
+    - port: 8883
+      targetPort: 8883
+      protocol: TCP
+      name: mqtts
+    - port: 9001
+      targetPort: 9001
+      protocol: TCP
+      name: ws
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "garage-server.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "garage-server.fullname" . }}-npsvc
+  labels:
+    {{- include "garage-server.labels" . | nindent 4 }}
+spec:
+  type: NodePort
+  ports:
+    - port: 1883
+      targetPort: 1883
+      protocol: TCP
+      name: mqtt
+      nodePort: 31883
+    - port: 8883
+      targetPort: 8883
+      protocol: TCP
+      name: mqtts
+      nodePort: 31884
+  selector:
+    {{- include "garage-server.selectorLabels" . | nindent 4 }}

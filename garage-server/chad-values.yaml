@@ -1,0 +1,29 @@
+
+ingress:
+  enabled: true
+  annotations: 
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: garage.justsotech.com
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          serviceName: chart-example.local
+          servicePort: 80
+  tls:
+    - secretName: chads-garage-tls-prod
+      hosts:
+        - garage.justsotech.com
+
+certManager:
+  enabled: true
+  issuerName: letsencrypt-prod
+  commonName: garage.justsotech.com
+
+loadBalancer:
+  enabled: false
+  port: 11883
+  ip: 23.92.23.138

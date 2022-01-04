@@ -1,0 +1,11 @@
+apiVersion: v1
+data:
+# Load files from the html dir into a configmap
+{{ (.Files.Glob "html/*").AsConfig |indent 4 }}
+kind: ConfigMap
+metadata:
+  name: {{ include "garage-server.fullname" . }}-html
+  annotations:
+  {{- range $i, $e := .Chart.Sources }}
+    github-url-{{ $i }}: {{ $e }}
+  {{- end }}

@@ -76,6 +76,7 @@ namespace garage
         Device();
         ~Device();
         float rh();
+        float tempc();
         float tempf();
         int getDhPin();
         std::string currentTime();
