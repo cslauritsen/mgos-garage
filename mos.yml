@@ -72,6 +72,10 @@ config_schema:
   - ["provision.btn.hold_ms", 5000 ]
   - ["provision.btn.pull_up", true ]
 
+# this is a nice feature but unfortunately the onboard led is
+# connected to my relay GPIO
+  - ["provision.led.pin", -1 ]
+
 # These settings get compiled into the C structure, and can be accessed
 # from the C code this way:
 #
