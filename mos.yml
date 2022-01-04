@@ -41,7 +41,7 @@ config_schema:
   - ["garage.door_activate_millis", "i",  500, { title: "Milliseconds to leave door relay activated"}]
 
   - ["mqtt.enable", "b",  true, { title: "MQTT enabled"} ]
-  - ["mqtt.server", "s",  "mqtt.justsotech.com:31883", { title: "MQTT Server"} ]
+  - ["mqtt.server", "s",  "mqtt.justsotech.com:31884", { title: "MQTT Server"} ]
   - ["mqtt.will_topic", "s",  "homie/garage-${device.id}/$state", { title: "Updated at runtime by app"} ]
   - ["mqtt.will_message", "s",  "lost", { title: "MQTT LWT message prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_retain", "b",  true, { title: "MQTT LWT retention flag"} ]
