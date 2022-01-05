@@ -35,7 +35,7 @@ namespace garage
 
         mgos_sys_config_set_mqtt_will_topic(homieDevice->getLifecycleTopic().c_str());
         mgos_sys_config_set_mqtt_ssl_psk_identity(this->deviceId.c_str());
-        mgos_sys_config_set_mqtt_ssl_psk_key(homieDevice->getPsk().substr(0, 32).c_str());
+        mgos_sys_config_set_mqtt_ssl_psk_key(homieDevice->getPsk().substr(0, 64).c_str());
 
         memset(this->current_time, 0, sizeof(this->current_time));
         this->dhPin = mgos_sys_config_get_garage_dht_pin();

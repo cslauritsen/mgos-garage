@@ -2,9 +2,9 @@ author: mongoose-os
 description: A Mongoose OS app skeleton
 version: 1.2.12
 
-libs_version: 2.19.0 # ${mos.version}
-modules_version: 2.19.0 # ${mos.version}
-mongoose_os_version: 2.19.0 # ${mos.version}
+libs_version: ${mos.version}
+modules_version: ${mos.version}
+mongoose_os_version: ${mos.version}
 
 # Optional. List of tags for online search.
 tags:
