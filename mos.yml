@@ -1,6 +1,6 @@
 author: mongoose-os
 description: A Mongoose OS app skeleton
-version: 2.18.1
+version: 3.0.0
 
 libs_version: ${mos.version}
 modules_version: ${mos.version}
