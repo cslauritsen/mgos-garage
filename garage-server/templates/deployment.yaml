@@ -41,7 +41,8 @@ spec:
           secretName: mqtt-users
       - name: {{ include "garage-server.fullname" . }}-tls-vol
         secret:
-          secretName: {{ include "garage-server.fullname" . }}-letsencrypt-staging-tls
+#         secretName: {{ include "garage-server.fullname" . }}-letsencrypt-staging-tls
+          secretName: mqtt-tls
       containers:
         - name: {{ .Chart.Name }}-web
           securityContext:

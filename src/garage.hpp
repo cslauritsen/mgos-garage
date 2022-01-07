@@ -1,6 +1,7 @@
 #pragma once
 #include "all.h"
 
+
 #define RELAY_STATE_ACTIVE 0
 #define RELAY_STATE_INACTIVE 1
 
@@ -83,11 +84,11 @@ namespace garage
         std::string getStatusJson();
         std::string getDeviceId() { return deviceId; }
         int getDoorCount() { return doorCount; }
+        int getWifiSignalStrength();
         std::string getIpAddr() { return ipAddr; }
         void setIpAddr(std::string s);
         std::list<Door *> &getDoors() { return doors; }
         homie::Device *homieDevice;
-        homie::Node *homieDhtNode;
     };
 
 }

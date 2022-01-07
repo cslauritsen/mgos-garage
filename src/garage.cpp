@@ -34,8 +34,9 @@ namespace garage
             mac);
 
         mgos_sys_config_set_mqtt_will_topic(homieDevice->getLifecycleTopic().c_str());
-        mgos_sys_config_set_mqtt_ssl_psk_identity(this->deviceId.c_str());
-        mgos_sys_config_set_mqtt_ssl_psk_key(homieDevice->getPsk().substr(0, 64).c_str());
+        // mgos_sys_config_set_mqtt_user(this->deviceId.c_str());
+        //  mgos_sys_config_set_mqtt_ssl_psk_identity(this->deviceId.c_str());
+        //  mgos_sys_config_set_mqtt_ssl_psk_key(homieDevice->getPsk().substr(0, 64).c_str());
 
         memset(this->current_time, 0, sizeof(this->current_time));
         this->dhPin = mgos_sys_config_get_garage_dht_pin();
@@ -55,11 +56,14 @@ namespace garage
         auto tempFProp = new homie::Property(dhtNode, DHT_PROP_TEMPF, "Temperature in Fahrenheit", homie::FLOAT, false);
         tempFProp->setValue(this->tempf());
         tempFProp->setUnit(homie::DEGREE_SYMBOL + "F");
-        dhtNode->addProperty(tempFProp);
 
         auto rhProp = new homie::Property(dhtNode, DHT_PROP_RH, "Relative Humidity", homie::FLOAT, false);
         rhProp->setUnit("%");
-        dhtNode->addProperty(rhProp);
+
+        auto wifiNode = new homie::Node(this->homieDevice, WIFI_NODE_NM, "WiFi Station", "Wifi");
+        auto rssiProp = new homie::Property(wifiNode, WIFI_NODE_RSSI_PROP, "WiFi Signal Strength", homie::INTEGER, false);
+        rssiProp->setFormat("0:255");
+        rssiProp->setValue(this->getWifiSignalStrength());
 
         // might take a little time for the DHT22 to return real values
         for (int i = 0; i < 30; i++)
@@ -78,9 +82,6 @@ namespace garage
                 break;
             }
         }
-
-        this->homieDhtNode = dhtNode;
-        this->homieDevice->addNode(dhtNode);
 
         this->doorCount = mgos_sys_config_get_garage_door_count();
 
@@ -124,7 +125,6 @@ namespace garage
             door->homieNode = doorNode;
             LOG(LL_DEBUG, ("Setup door %s (%d)", door->getName().c_str(), d));
         }
-
     }
 
     Device::~Device()
@@ -223,6 +223,18 @@ namespace garage
     void Device::setIpAddr(std::string s)
     {
         this->ipAddr = std::string(s);
+    }
+
+    int Device::getWifiSignalStrength()
+    {
+        auto rssi = mgos_wifi_sta_get_rssi();
+        {
+            if (rssi <= -100)
+                return 0;
+            if (rssi >= -50)
+                return 100;
+            return 2 * (rssi + 100);
+        }
     }
 
     Door::Door(const char *aName, int aContactPin, int aActivatePin, int index)

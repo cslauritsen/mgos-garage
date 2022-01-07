@@ -29,6 +29,7 @@
 #define BUILD_TIME "?"
 #endif
 
+
 using namespace garage;
 
 static void network_config_rpc_cb(struct mg_rpc *c, void *cb_arg, struct mg_rpc_frame_info *fi, struct mg_str result, int error_code, struct mg_str error_msg)
@@ -164,6 +165,7 @@ static void publish_door(void *arg)
   }
 }
 
+#if 0
 static mgos_timer_id introduce_timer_id = MGOS_INVALID_TIMER_ID;
 static void homie_introduce_cb(void *arg)
 {
@@ -210,7 +212,7 @@ static void homie_introduce_cb(void *arg)
 
   if (!enabled)
   {
-    // prevent this fuction from being invoked again
+    // prevent this function from being invoked again
     if (MGOS_INVALID_TIMER_ID != introduce_timer_id)
     {
       mgos_clear_timer(introduce_timer_id);
@@ -221,16 +223,17 @@ static void homie_introduce_cb(void *arg)
     if (pair->first)
     {
       delete pair->first;
-      pair->first = NULL;
+      pair->first = nullptr;
     }
     // no reason to keep the pair allocated
     if (pair)
     {
-      pair = NULL;
+      pair = nullptr;
       delete pair;
     }
   }
 }
+#endif
 
 static void publish_ip(Device *device)
 {
@@ -331,7 +334,7 @@ static void repeat_cb(void *arg)
     f = device->tempf();
     if (!isnan(f))
     {
-      auto prop = device->homieDhtNode->getProperty(DHT_PROP_TEMPF);
+      auto prop = device->homieDevice->getNode(DHT_NODE_NM)->getProperty(DHT_PROP_TEMPF);
       if (prop != nullptr)
       {
         prop->setValue(f);
@@ -349,7 +352,7 @@ static void repeat_cb(void *arg)
     f = device->rh();
     if (!isnan(f))
     {
-      auto prop = device->homieDhtNode->getProperty(DHT_PROP_RH);
+      auto prop = device->homieDevice->getNode(DHT_NODE_NM)->getProperty(DHT_PROP_RH);
       if (prop != nullptr)
       {
         prop->setValue(f);
@@ -393,6 +396,15 @@ static void repeat_cb(void *arg)
       auto newIp = device->homieDevice->getLocalIp();
       mg_rpc_callf(mgos_rpc_get_global(), mg_mk_str("Sys.GetInfo"), ip_rpc_cb, device, &opts, NULL);
     }
+
+    // WiFi
+    auto rssi = device->getWifiSignalStrength();
+    LOG(LL_DEBUG, ("rssi: %d", rssi));
+    auto wifiNode = device->homieDevice->getNode(WIFI_NODE_NM);
+    auto rssiProp = wifiNode->getProperty(WIFI_NODE_RSSI_PROP);
+    rssiProp->setValue(rssi);
+    auto payload = rssiProp->getValue();
+    mgos_mqtt_pub(rssiProp->getPubTopic().c_str(), payload.c_str(), payload.length(), qos, retain);
   }
   else
   {
@@ -473,11 +485,10 @@ static void sys_ready_cb(int ev, void *ev_data, void *userdata)
   }
 
   device->homieDevice->setLifecycleState(homie::READY);
-  auto msgList = device->homieDevice->introduce();
-  auto pair = new std::pair<std::vector<homie::Message> *, int>;
-  pair->first = new std::vector<homie::Message>(msgList.begin(), msgList.end());
-  pair->second = 0;
-  introduce_timer_id = mgos_set_timer(mgos_sys_config_get_homie_pubinterval(), 1, homie_introduce_cb, pair);
+  if (mgos_sys_config_get_homie_enable())
+  {
+    device->homieDevice->introduce(); // may require tuning of mqtt.max_queue_length
+  }
 
   LOG(LL_DEBUG, ("last will topic: %s", mgos_sys_config_get_mqtt_will_topic()));
 
@@ -517,6 +528,11 @@ enum mgos_app_init_result mgos_app_init(void)
   mg_rpc_add_handler(mgos_rpc_get_global(), "tempf.read", NULL, tempf_cb, device);
 
   mgos_set_timer(60000, 1, repeat_cb, device);
+  device->homieDevice->setLifecycleState(homie::INIT);
+  auto initMsg = device->homieDevice->getLifecycleMsg();
+
+  mgos_mqtt_pub(initMsg.topic.c_str(), initMsg.payload.c_str(), initMsg.payload.length(), 1, false);
+  LOG(LL_INFO, ("%s -> %s", initMsg.topic.c_str(), initMsg.payload.c_str()));
 
   // Register callback when sys init is complete
   mgos_event_add_handler(MGOS_EVENT_INIT_DONE, sys_ready_cb, device);

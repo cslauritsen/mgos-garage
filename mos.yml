@@ -1,6 +1,6 @@
 author: mongoose-os
 description: A Mongoose OS app skeleton
-version: 2.18.1
+version: 1.2.13
 
 libs_version: ${mos.version}
 modules_version: ${mos.version}
@@ -41,7 +41,8 @@ config_schema:
   - ["garage.door_activate_millis", "i",  500, { title: "Milliseconds to leave door relay activated"}]
 
   - ["mqtt.enable", "b",  true, { title: "MQTT enabled"} ]
-  - ["mqtt.server", "s",  "mqtt.justsotech.com:31884", { title: "MQTT Server"} ]
+  - ["mqtt.server", "s",  "iot.justsotech.com", { title: "MQTT Server"} ]
+  - ["mqtt.ssl_ca_cert", "s",  "ca.pem", { title: "CA Certificates for SSL" }]
   - ["mqtt.will_topic", "s",  "homie/garage-${device.id}/$state", { title: "Updated at runtime by app"} ]
   - ["mqtt.will_message", "s",  "lost", { title: "MQTT LWT message prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_retain", "b",  true, { title: "MQTT LWT retention flag"} ]
@@ -49,13 +50,13 @@ config_schema:
   - ["mqtt.maxqos", "i",  2, { title: "Maximum QoS supported by the server"} ]
   - ["mqtt.max_unsent", "i",  512, { title: "Max unsent bytes before sending again"}]
 # having trouble with this
-#  - ["mqtt.ssl_ca_cert", "s",  "/ca.pem", { title: "CA Certificates for SSL" }]
   - ["rpc.mqtt.enable", "b",  true, { title: "MQTT RPC enabled"} ]
 
   - ["homie.pubinterval", "i",  300, { title: "Millis to wait before sending another home cfg msg"}]
+  - ["homie.enable", "b",  true, { title: "Send homie messages?" } ]
 
-  - ["debug.udp_log_addr", "s",  "192.168.1.5:31339", { title: "UDP log target"} ]
-  - ["debug.level", 3]
+# - ["debug.udp_log_addr", "s",  "192.168.1.5:31339", { title: "UDP log target"} ]
+# - ["debug.level", 3]
 
 # The following values allow the device to know when sunrise and sunset are
   - ["sys.tz_spec", "s", "EST5EDT4,M4.1.0/02:00:00,M10.5.0/02:00:00", {title: "See formats for the TZ env var: \"man tzset\". Formats like \":/path/to/file\" are not supported"}]
@@ -78,6 +79,11 @@ config_schema:
 # this is a nice feature but unfortunately the onboard led is
 # connected to my relay GPIO
   - ["provision.led.pin", -1 ]
+  # Dash stuff
+  # to enable:
+  # copy token from mdash.net device profile
+  # mos config-set dash.enable=true dash.token=$(pbpaste)
+  - ["dash.enable", false ]
 
 # These settings get compiled into the C structure, and can be accessed
 # from the C code this way:
@@ -111,14 +117,13 @@ libs:
   - origin: https://github.com/mongoose-os-libs/ota-http-server 
   - origin: https://github.com/mongoose-os-libs/mqtt
   - origin: https://github.com/mongoose-os-libs/dash
-  - origin: https://github.com/mongoose-os-libs/sensor-utils
-  #- origin: https://github.com/mongoose-os-libs/adc
+# - origin: https://github.com/mongoose-os-libs/sensor-utils
+# - origin: https://github.com/mongoose-os-libs/adc
   - origin: https://github.com/mongoose-os-libs/wifi-setup-web-ui
   - origin: https://github.com/mongoose-os-libs/sntp
   - origin: https://github.com/mongoose-os-libs/rpc-loopback
   - origin: https://github.com/mongoose-os-libs/provision
   - origin: https://github.com/cslauritsen/cslhomie
-
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
 manifest_version: 2017-09-29

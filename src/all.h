@@ -28,7 +28,6 @@ extern "C"
 }
 
 #include <iostream>
-//#include <ostream>
 #include <sstream>
 
 #include <string>
@@ -45,6 +44,8 @@ extern "C"
 
 #define DHT_NODE_NM "dht22"
 #define DHT_PROP_TEMPF "tempf"
-#define DHT_PROP_RH    "rh"
-#define DOOR_ACTIVATE_PROP    "activate"
-#define DOOR_CONTACT_PROP    "isopen"
+#define DHT_PROP_RH "rh"
+#define DOOR_ACTIVATE_PROP "activate"
+#define DOOR_CONTACT_PROP "isopen"
+#define WIFI_NODE_NM "wifi"
+#define WIFI_NODE_RSSI_PROP "rssi"

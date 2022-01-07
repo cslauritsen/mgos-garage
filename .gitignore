@@ -8,3 +8,5 @@ rpc/
 .*.swo
 
 config-set.sh
+*.key
+.DS_Store
