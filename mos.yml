@@ -46,7 +46,7 @@ config_schema:
   - ["mqtt.will_topic", "s",  "homie/garage-${device.id}/$state", { title: "Updated at runtime by app"} ]
   - ["mqtt.will_message", "s",  "lost", { title: "MQTT LWT message prescribed by Homie 4.0 spec"} ]
   - ["mqtt.will_retain", "b",  true, { title: "MQTT LWT retention flag"} ]
-  - ["mqtt.max_queue_length", "i", 35, {title: "Maximum queue length for buffering QoS 1+ messages. 0 to disable queue."}]
+  - ["mqtt.max_queue_length", "i", 50, {title: "Maximum queue length for buffering QoS 1+ messages. 0 to disable queue."}]
   - ["mqtt.maxqos", "i",  2, { title: "Maximum QoS supported by the server"} ]
   - ["mqtt.max_unsent", "i",  512, { title: "Max unsent bytes before sending again"}]
 # having trouble with this
