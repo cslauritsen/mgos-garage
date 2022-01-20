@@ -1,4 +1,15 @@
 #pragma once
+#define NODE_NM_DHT "dht22"
+#define PROP_NM_TEMPF "tempf"
+#define PROP_NM_TEMPC "tempc"
+#define PROP_NM_RH "rh"
+#define NODE_NM_PIR "pir"
+#define PROP_NM_MOTION "motion"
+
+#include <homie.hpp>
+#include "thing.h"
+
+#include <string>
 
 extern "C" {
 #include "mgos.h"
@@ -6,7 +17,6 @@ extern "C" {
 #include "mgos_dlsym.h"
 #include "mgos_hal.h"
 #include "mgos_rpc.h"
-//#include "mjs.h"
 #include <common/cs_dbg.h>
 #include <mg_rpc_channel_loopback.h>
 #include <mgos_app.h>
@@ -25,26 +35,3 @@ extern char *build_id;
 extern char *build_timestamp;
 extern char *build_version;
 }
-
-#include <iostream>
-#include <sstream>
-
-#include <algorithm>
-#include <cctype>
-#include <string>
-
-#include <list>
-#include <memory>
-#include <tuple>
-#include <vector>
-
-#include <garage.hpp>
-#include <homie.hpp>
-
-#define DHT_NODE_NM "dht22"
-#define DHT_PROP_TEMPF "tempf"
-#define DHT_PROP_RH "rh"
-#define DOOR_ACTIVATE_PROP "activate"
-#define DOOR_CONTACT_PROP "isopen"
-#define WIFI_NODE_NM "wifi"
-#define WIFI_NODE_RSSI_PROP "rssi"
