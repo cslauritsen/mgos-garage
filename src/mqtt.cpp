@@ -10,7 +10,7 @@ void homie::Device::publish(Message m) {
 static void my_mgos_sub_handler(struct mg_connection *nc, const char *topic,
                                 int topic_len, const char *msg, int msg_len,
                                 void *ud) {
-  Thing *t = (Thing *)ud;
+  Thing *t = reinterpret_cast<Thing*>(ud);
   homie::Message m(std::string(topic), std::string(msg, msg_len));
   // dispatch the command to the property
   t->onMessage(m);

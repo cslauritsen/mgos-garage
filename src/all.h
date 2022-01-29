@@ -6,8 +6,8 @@
 #define NODE_NM_PIR "pir"
 #define PROP_NM_MOTION "motion"
 
-#include <homie.hpp>
 #include "thing.h"
+#include <homie.hpp>
 
 #include <string>
 

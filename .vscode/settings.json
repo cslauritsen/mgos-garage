@@ -72,6 +72,10 @@
         "stack": "cpp",
         "strstream": "cpp",
         "typeindex": "cpp",
-        "variant": "cpp"
+        "variant": "cpp",
+        "condition_variable": "cpp",
+        "future": "cpp",
+        "random": "cpp",
+        "thread": "cpp"
     }
 }

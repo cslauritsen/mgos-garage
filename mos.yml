@@ -27,7 +27,7 @@ config_schema:
   - ["time.debounce_millis", "i",  500, { title: "Time interval during which repeated interrupts may be ignored"}]
   - ["garage", "o", {title: "My app custom settings"}]
   - ["garage.name", "s", "My Garage", {title: "Name of Garage"}]
-  - ["garage.door_count", "i",  1, { title: "Number of Doors connected"} ]
+  - ["garage.door.count", "i",  1, { title: "Number of Doors connected"} ]
   - ["garage.door.a.name", "s",  "Garage Door", { title: "Human-friendly name of door 0"} ]
   - ["garage.door.a.pin.contact", "i",  4, { title: "Digital GPIO PIN for door closed contact LOW=active"} ]
   - ["garage.door.a.pin.activate", "i", 2, { title: "Digital GPIO PIN for door activate relay, should out HI on boot, LO=active"} ]
@@ -72,13 +72,20 @@ config_schema:
 #    set provision.btn.hold_ms to a positive value, e.g. 5000 - 5 seconds. 
 #    If you also set provision.btn.inhibit_after_s value to non-zero number of seconds, 
 #    reset button will be inhibited once uptime reaches this value (reset button will stop working N seconds after boot).
-  - ["provision.btn.pin", 5 ]
-  - ["provision.btn.hold_ms", 5000 ]
-  - ["provision.btn.pull_up", true ]
+# - ["provision.btn.pin", 5 ]
+# - ["provision.btn.pin", -1 ]
+# - ["provision.btn.hold_ms", 5000 ]
+# - ["provision.btn.pull_up", true ]
 
 # this is a nice feature but unfortunately the onboard led is
 # connected to my relay GPIO
   - ["provision.led.pin", -1 ]
+# Alternative method:
+# Resetting to factory defaults
+# If configured by debug.factory_reset_gpio, holding the specified pin low during 
+# boot will wipe out user settings (conf9.json). 
+# Note, vendor settings, if present, are not reset.
+  - ["debug.factory_reset_gpio", 5 ]
   # Dash stuff
   # to enable:
   # copy token from mdash.net device profile
@@ -122,9 +129,10 @@ libs:
   - origin: https://github.com/mongoose-os-libs/wifi-setup-web-ui
   - origin: https://github.com/mongoose-os-libs/sntp
   - origin: https://github.com/mongoose-os-libs/rpc-loopback
-  - origin: https://github.com/mongoose-os-libs/provision
+# - origin: https://github.com/mongoose-os-libs/provision
   - origin: https://github.com/cslauritsen/cslhomie
-    version: v1.3.0
+#   version: v1.3.0
+    version: master
 
 # Used by the mos tool to catch mos binaries incompatible with this file format
 manifest_version: 2017-09-29
